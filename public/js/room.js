@@ -520,7 +520,14 @@ async function createProducer(stream) {
         
         // Video producer
         if (videoTrack) {
-            const videoProducer = await sendTransport.produce({ track: videoTrack });
+            // Optimizasyon: Bitrate limiti 1.5 Mbps (performans için)
+            const videoProducer = await sendTransport.produce({ 
+                track: videoTrack,
+                encodings: [{
+                    maxBitrate: 1500000, // 1.5 Mbps
+                    scaleResolutionDownBy: 1.0
+                }]
+            });
             createdProducers.set('video', videoProducer);
             debug('Video producer oluşturuldu:', videoProducer.id);
         }
@@ -912,13 +919,14 @@ async function initializeCall() {
         await createDevice(routerRtpCapabilities);
         
         // Ekran paylaşımı erişimi iste
+        // Optimizasyon: 720p ve 30 FPS ile sınırlandırıldı (performans için)
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 cursor: 'always',
                 displaySurface: 'monitor',
-                frameRate: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].frameRate },
-                width: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].width },
-                height: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].height }
+                width: { ideal: 1280, max: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30, max: 30 }
             },
             audio: {
                 echoCancellation: true,
@@ -932,9 +940,9 @@ async function initializeCall() {
         const videoTrack = screenStream.getVideoTracks()[0];
         if (videoTrack) {
             const constraints = {
-                width: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].width },
-                height: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].height },
-                frameRate: { ideal: VIDEO_QUALITY_LEVELS[currentQualityLevel].frameRate }
+                width: { ideal: 1280, max: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30, max: 30 }
             };
             
             await videoTrack.applyConstraints(constraints);
