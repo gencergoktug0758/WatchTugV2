@@ -520,19 +520,19 @@ async function createProducer(stream) {
         
         // Video producer
         if (videoTrack) {
+            // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
             // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 2500000, // 2.5 Mbps - Yüksek kalite
+                    maxBitrate: 2500000, // 2.5 Mbps (Discord Nitro olmadan genelde budur)
+                    maxFramerate: 30, // 30 FPS (Discord standardı)
                     scaleResolutionDownBy: 1.0 // Orijinal boyut
-                }],
-                codecOptions: {
-                    videoGoogleStartBitrate: 1000 // Başlangıç bitrate (kbps) - Net başlangıç için
-                }
+                }]
+                // codecOptions kaldırıldı: H.264'te videoGoogleStartBitrate sorun çıkarabilir
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (Tek katman, yüksek kalite):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, Tek katman, yüksek kalite):', videoProducer.id);
         }
         
         // Audio producer
@@ -576,6 +576,17 @@ async function createConsumer(producerId) {
                     });
                     
                     consumers.set(consumer.id, consumer);
+                    
+                    // ZORLA: En yüksek kalite katmanını iste (144p sorununu önlemek için)
+                    if (consumer.kind === 'video') {
+                        try {
+                            await consumer.setPreferredLayers({ spatialLayer: 2, temporalLayer: 2 });
+                            debug('Consumer en yüksek kalite katmanına zorlandı (spatialLayer: 2, temporalLayer: 2)');
+                        } catch (layerError) {
+                            // Eğer spatialLayer 2 yoksa, sistem otomatik en yükseği verecektir
+                            debug('setPreferredLayers hatası (sistem otomatik en yüksek katmanı seçecek):', layerError);
+                        }
+                    }
                     
                     // Consumer'ı resume et
                     socket.emit('consumer-resume', { consumerId: consumer.id }, (response) => {
@@ -938,13 +949,13 @@ async function initializeCall() {
         await createDevice(routerRtpCapabilities);
         
         // Ekran paylaşımı erişimi iste
-        // Optimizasyon: 720p ve 30 FPS ile sınırlandırıldı (performans için)
+        // ZORLA: 720p altına inmemeye zorla (min değerler ile)
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 cursor: 'always',
                 displaySurface: 'monitor',
-                width: { ideal: 1280, max: 1280 },
-                height: { ideal: 720 },
+                width: { min: 1280, ideal: 1920 }, // 1280'den aşağısını kabul etme
+                height: { min: 720, ideal: 1080 }, // 720'den aşağısını kabul etme
                 frameRate: { ideal: 30, max: 30 }
             },
             audio: {
@@ -959,8 +970,8 @@ async function initializeCall() {
         const videoTrack = screenStream.getVideoTracks()[0];
         if (videoTrack) {
             const constraints = {
-                width: { ideal: 1280, max: 1280 },
-                height: { ideal: 720 },
+                width: { min: 1280, ideal: 1920 }, // 1280'den aşağısını kabul etme
+                height: { min: 720, ideal: 1080 }, // 720'den aşağısını kabul etme
                 frameRate: { ideal: 30, max: 30 }
             };
             
