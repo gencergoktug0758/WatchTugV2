@@ -949,14 +949,14 @@ async function initializeCall() {
         await createDevice(routerRtpCapabilities);
         
         // Ekran paylaşımı erişimi iste
-        // ZORLA: 720p altına inmemeye zorla (min değerler ile)
+        // NOT: getDisplayMedia'da "min" constraint desteklenmez, sadece "max" kullanılabilir
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 cursor: 'always',
                 displaySurface: 'monitor',
-                width: { min: 1280, ideal: 1920 }, // 1280'den aşağısını kabul etme
-                height: { min: 720, ideal: 1080 }, // 720'den aşağısını kabul etme
-                frameRate: { ideal: 30, max: 30 }
+                width: { max: 1920 }, // Sadece Max sınır koy
+                height: { max: 1080 }, // Sadece Max sınır koy
+                frameRate: 30 // FPS limiti
             },
             audio: {
                 echoCancellation: true,
@@ -970,8 +970,8 @@ async function initializeCall() {
         const videoTrack = screenStream.getVideoTracks()[0];
         if (videoTrack) {
             const constraints = {
-                width: { min: 1280, ideal: 1920 }, // 1280'den aşağısını kabul etme
-                height: { min: 720, ideal: 1080 }, // 720'den aşağısını kabul etme
+                width: { max: 1920 }, // Sadece Max sınır koy
+                height: { max: 1080 }, // Sadece Max sınır koy
                 frameRate: { ideal: 30, max: 30 }
             };
             
