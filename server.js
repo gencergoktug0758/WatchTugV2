@@ -139,8 +139,17 @@ function getLocalNetworkIp() {
     return '127.0.0.1';
 }
 
-// Sunucu IP adresini başlangıçta tespit et
-const SERVER_IP = getLocalNetworkIp();
+// Sunucu IP adresini belirle
+// Production: Environment variable'dan al, yoksa production IP'sini kullan
+// Development: Otomatik tespit et
+const SERVER_IP = process.env.MEDIASOUP_ANNOUNCED_IP || 
+                  (process.env.NODE_ENV === 'production' ? '2.59.119.179' : getLocalNetworkIp());
+
+if (process.env.NODE_ENV === 'production') {
+    log(`Production IP adresi kullanılıyor: ${SERVER_IP}`, 'success');
+} else {
+    log(`Development IP adresi tespit edildi: ${SERVER_IP}`, 'info');
+}
 
 // Mediasoup Worker oluştur
 async function createWorker() {
@@ -310,8 +319,8 @@ async function createWebRtcTransport(socket, roomId, direction = 'send') {
             listenIps: [
                 {
                     ip: '0.0.0.0',
-                    // KRİTİK: Client'lara gerçek IP adresini bildir
-                    // Bu sayede client'lar sunucuya doğru IP'den bağlanabilir
+                    // KRİTİK: Production sunucu IP adresi
+                    // Client'lara bu IP adresinden bağlanmaları gerektiğini bildirir
                     announcedIp: SERVER_IP
                 }
             ],
