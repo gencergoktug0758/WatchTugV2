@@ -1110,10 +1110,12 @@ async function startServer() {
         // Worker'ları başlat
         await initializeWorkers();
         
-        // Sunucuyu başlat
+        // Sunucuyu başlat (0.0.0.0 = tüm ağ arayüzlerini dinle)
         server.listen(PORT, '0.0.0.0', () => {
             log(`WTUG sunucusu ${PORT} portunda çalışıyor`, 'success');
-            log(`http://localhost:${PORT} adresinden erişebilirsiniz`, 'success');
+            log(`Sunucu tüm ağ arayüzlerinde dinleniyor (0.0.0.0:${PORT})`, 'success');
+            log(`Yerel erişim: http://localhost:${PORT}`, 'info');
+            log(`Dış erişim: http://${SERVER_IP}:${PORT}`, 'info');
         });
     } catch (error) {
         log(`Sunucu başlatma hatası: ${error.message}`, 'error');
