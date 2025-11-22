@@ -522,18 +522,18 @@ async function createProducer(stream) {
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
             // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
-            // Safe Mode: Düşük bitrate/FPS ile kasma sorununu önle
+            // Film Modu: Port uyumluluğu sağlandıktan sonra bitrate artırıldı
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 1000000, // 1 Mbps (Donmayı kesmek için en ideal sınır)
-                    maxFramerate: 24, // 24 FPS (Film standardı, interneti yormaz)
+                    maxBitrate: 2000000, // 2 Mbps (Film modu için optimize edilmiş)
+                    maxFramerate: 30, // 30 FPS (Film modu için optimize edilmiş)
                     scaleResolutionDownBy: 1.0 // Orijinal boyut
                 }]
                 // codecOptions kaldırıldı: H.264'te videoGoogleStartBitrate sorun çıkarabilir
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, Safe Mode: 1 Mbps, 24 FPS):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, Film Modu: 2 Mbps, 30 FPS):', videoProducer.id);
         }
         
         // Audio producer
@@ -978,7 +978,7 @@ async function initializeCall() {
             };
             
             await videoTrack.applyConstraints(constraints);
-            videoTrack.contentHint = 'detail';
+            videoTrack.contentHint = 'motion'; // Film modu: Chrome'a bu bir hareketli içerik (film) olduğunu söyle
         }
         
         // Producer Transport oluştur
