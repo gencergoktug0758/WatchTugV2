@@ -520,16 +520,19 @@ async function createProducer(stream) {
         
         // Video producer
         if (videoTrack) {
-            // Optimizasyon: Bitrate limiti 1.5 Mbps (performans için)
+            // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 1500000, // 1.5 Mbps
-                    scaleResolutionDownBy: 1.0
-                }]
+                    maxBitrate: 2500000, // 2.5 Mbps - Yüksek kalite
+                    scaleResolutionDownBy: 1.0 // Orijinal boyut
+                }],
+                codecOptions: {
+                    videoGoogleStartBitrate: 1000 // Başlangıç bitrate (kbps) - Net başlangıç için
+                }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu:', videoProducer.id);
+            debug('Video producer oluşturuldu (Tek katman, yüksek kalite):', videoProducer.id);
         }
         
         // Audio producer

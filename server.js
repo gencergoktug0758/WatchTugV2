@@ -709,6 +709,18 @@ io.on('connection', async (socket) => {
                 return;
             }
             
+            // Simulcast DEVRE DIŞI: Video için encodings'i tek katman olacak şekilde zorla
+            if (kind === 'video' && rtpParameters.encodings && rtpParameters.encodings.length > 0) {
+                // Sadece ilk encoding'i al (en yüksek kalite)
+                rtpParameters.encodings = [rtpParameters.encodings[0]];
+                // Simulcast özelliklerini kaldır
+                if (rtpParameters.encodings[0].scalabilityMode) {
+                    delete rtpParameters.encodings[0].scalabilityMode;
+                }
+                // maxBitrate ve scaleResolutionDownBy'ı koru (frontend'den gelen değerler)
+                log(`Simulcast devre dışı: Tek katman yüksek kalite (${rtpParameters.encodings[0].maxBitrate || 'default'} bps)`, 'info');
+            }
+            
             const producer = await peer.sendTransport.produce({
                 kind,
                 rtpParameters,
