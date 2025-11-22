@@ -522,17 +522,18 @@ async function createProducer(stream) {
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
             // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
+            // Safe Mode: Düşük bitrate/FPS ile kasma sorununu önle
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 2500000, // 2.5 Mbps (Discord Nitro olmadan genelde budur)
-                    maxFramerate: 30, // 30 FPS (Discord standardı)
+                    maxBitrate: 1000000, // 1 Mbps (Donmayı kesmek için en ideal sınır)
+                    maxFramerate: 24, // 24 FPS (Film standardı, interneti yormaz)
                     scaleResolutionDownBy: 1.0 // Orijinal boyut
                 }]
                 // codecOptions kaldırıldı: H.264'te videoGoogleStartBitrate sorun çıkarabilir
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, Tek katman, yüksek kalite):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, Safe Mode: 1 Mbps, 24 FPS):', videoProducer.id);
         }
         
         // Audio producer
@@ -961,6 +962,7 @@ async function initializeCall() {
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
+                autoGainControl: false, // Film sesini dalgalandırmasın diye kapalı
                 sampleRate: 48000,
                 channelCount: 2
             }
@@ -1003,11 +1005,13 @@ async function initializeCall() {
         
         debug('Ekran paylaşımı başlatıldı (Mediasoup), diğer kullanıcılara bildiriliyor...');
         
-        // Kendi ekranımızı göster
+        // Kendi ekranımızı göster (YANKI ÖNLEME: Yerel videoyu sustur)
         screenDisplay.srcObject = screenStream;
         screenDisplay.buffered = bufferSize;
+        screenDisplay.muted = true; // Yayıncı kendi paylaştığı filmin sesini tarayıcıdan duymasın
+        screenDisplay.volume = 0; // Ses seviyesini 0 yap (yankı önleme)
         screenDisplay.play()
-            .then(() => debug('Yerel video oynatma başarılı'))
+            .then(() => debug('Yerel video oynatma başarılı (muted - yankı önleme)'))
             .catch(error => debug('Yerel video oynatma hatası:', error));
         
         // Stream durduğunda
