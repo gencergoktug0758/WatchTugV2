@@ -522,18 +522,21 @@ async function createProducer(stream) {
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
             // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
-            // Film Modu: Port uyumluluğu sağlandıktan sonra bitrate artırıldı
+            // Bitrate Stabilizasyonu: Discord Nitro kalitesi ayarları
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 2000000, // 2 Mbps (Film modu için optimize edilmiş)
-                    maxFramerate: 30, // 30 FPS (Film modu için optimize edilmiş)
-                    scaleResolutionDownBy: 1.0 // Orijinal boyut
-                }]
-                // codecOptions kaldırıldı: H.264'te videoGoogleStartBitrate sorun çıkarabilir
+                    maxBitrate: 2500000, // 2.5 Mbps (Üst limit - Discord Nitro standardı)
+                    maxFramerate: 30, // 30 FPS
+                    scaleResolutionDownBy: 1.0, // Orijinal boyut
+                    networkPriority: 'high' // Paket önceliğini artır (Bitrate dalgalanmasını önle)
+                }],
+                codecOptions: {
+                    videoGoogleStartBitrate: 1000 // Başlangıç bitrate 1 Mbps (Direkt başla, yavaş yavaş açılmasını bekleme)
+                }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, Film Modu: 2 Mbps, 30 FPS):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, Stabil Bitrate: 2.5 Mbps, 30 FPS, High Priority):', videoProducer.id);
         }
         
         // Audio producer
