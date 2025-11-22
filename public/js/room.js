@@ -521,29 +521,36 @@ async function createProducer(stream) {
         // Video producer
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
-            // Simulcast DEVRE DIŞI: Tek yüksek kaliteli akış (144p sorununu önlemek için)
-            // Bitrate Stabilizasyonu: Discord Nitro kalitesi ayarları
+            // Simulcast DEVRE DIŞI: L1T1 modu (Tek katman, paket kaybı sorununu önle)
+            // Bitrate Stabilizasyonu: Sabit 1.2 Mbps (Dalgalanma yok)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 2500000, // 2.5 Mbps (Üst limit - Discord Nitro standardı)
-                    maxFramerate: 30, // 30 FPS
+                    maxBitrate: 1200000, // 1.2 Mbps (Sabit, dalgalanmaz)
                     scaleResolutionDownBy: 1.0, // Orijinal boyut
-                    networkPriority: 'high' // Paket önceliğini artır (Bitrate dalgalanmasını önle)
+                    scalabilityMode: 'L1T1', // ÇOK ÖNEMLİ: Sadece tek katman gönder, karmaşa olmasın
+                    networkPriority: 'high' // Paket önceliğini artır
                 }],
                 codecOptions: {
                     videoGoogleStartBitrate: 1000 // Başlangıç bitrate 1 Mbps (Direkt başla, yavaş yavaş açılmasını bekleme)
                 }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, Stabil Bitrate: 2.5 Mbps, 30 FPS, High Priority):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, L1T1 Modu: 1.2 Mbps, Tek Katman, High Priority):', videoProducer.id);
         }
         
         // Audio producer
         if (audioTrack) {
-            const audioProducer = await sendTransport.produce({ track: audioTrack });
+            // Ses optimizasyonu: Bant genişliği tasarrufu için stereo kapat ve DTX aktif et
+            const audioProducer = await sendTransport.produce({ 
+                track: audioTrack,
+                codecOptions: {
+                    opusStereo: false, // Stereo kapat (Bant genişliği tasarrufu)
+                    opusDtx: true // Discontinuous Transmission aktif (Sessizlikte paket gönderme)
+                }
+            });
             createdProducers.set('audio', audioProducer);
-            debug('Audio producer oluşturuldu:', audioProducer.id);
+            debug('Audio producer oluşturuldu (Opus Mono, DTX aktif):', audioProducer.id);
         }
         
         return createdProducers;
