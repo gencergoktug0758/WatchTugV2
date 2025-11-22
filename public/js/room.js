@@ -830,7 +830,14 @@ function showMessageNotification(message) {
 }
 
 // Network kalitesini izle
+// DEVRE DIŞI: Otomatik kalite düşürme mekanizması kaldırıldı
+// Video her zaman yüksek kalitede kalacak, otomatik düşürme yapılmayacak
 function startNetworkQualityMonitor() {
+    // Otomatik kalite düşürme mekanizması devre dışı bırakıldı
+    // Video gerekirse donsun ama hep yüksek kalitede kalsın
+    return;
+    
+    /* DEVRE DIŞI KOD - Otomatik kalite düşürme
     if (networkQualityMonitor) return;
     
     networkQualityMonitor = setInterval(() => {
@@ -855,10 +862,18 @@ function startNetworkQualityMonitor() {
             adjustVideoQuality('HIGH');
         }
     }, 5000); // Her 5 saniyede bir kontrol et
+    */
 }
 
 // Video kalitesini ayarla
+// DEVRE DIŞI: Otomatik kalite düşürme mekanizması kaldırıldı
+// Video her zaman yüksek kalitede kalacak
 function adjustVideoQuality(level) {
+    // Otomatik kalite düşürme mekanizması devre dışı bırakıldı
+    // Video gerekirse donsun ama hep yüksek kalitede kalsın
+    return;
+    
+    /* DEVRE DIŞI KOD - Otomatik kalite düşürme
     if (currentQualityLevel === level) return;
     
     const quality = VIDEO_QUALITY_LEVELS[level];
@@ -895,6 +910,7 @@ function adjustVideoQuality(level) {
                 .catch(error => debug('Video kalitesi ayarlama hatası:', error));
         }
     }
+    */
 }
 
 // Initialize WebRTC - Ekran paylaşımını başlatma işlevi (Mediasoup)
@@ -960,7 +976,8 @@ async function initializeCall() {
         producers = createdProducers;
         
         // Network kalitesi izlemeyi başlat
-        startNetworkQualityMonitor();
+        // DEVRE DIŞI: Otomatik kalite düşürme mekanizması kaldırıldı
+        // startNetworkQualityMonitor();
         
         // Hide connecting screen
         connectingScreen.classList.add('hidden');
