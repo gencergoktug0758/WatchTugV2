@@ -166,3 +166,50 @@ video {
   animation-delay: 1s;
 }
 
+/* Animated Heart */
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  10%, 30% {
+    transform: scale(1.1);
+  }
+  20%, 40% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.heart {
+  display: inline-block;
+  color: #e50914;
+  animation: heartbeat 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.heart::before,
+.heart::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  background: currentColor;
+  border-radius: 8px 8px 0 0;
+  transform: rotate(-45deg);
+  transform-origin: 0 100%;
+}
+
+.heart::after {
+  left: 6px;
+  transform: rotate(45deg);
+  transform-origin: 100% 100%;
+}
+
+.heart-simple {
+  display: inline-block;
+  animation: heartbeat 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+

@@ -6,6 +6,7 @@ import VideoPlayer from './VideoPlayer';
 import ChatBox from './ChatBox';
 import UserList from './UserList';
 import { ToastContainer } from './Toast';
+import Footer from './Footer';
 import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2 } from 'lucide-react';
 
 const Room = () => {
@@ -294,6 +295,9 @@ const Room = () => {
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

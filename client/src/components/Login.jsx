@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
 import { Video, Sparkles } from 'lucide-react';
 import { ToastContainer } from './Toast';
+import Footer from './Footer';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -163,6 +164,9 @@ disabled={false}
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
