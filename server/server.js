@@ -7,13 +7,32 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    // Hem localhost'a hem de canlı siteye izin ver
+    origin: process.env.CLIENT_URL 
+      ? process.env.CLIENT_URL.split(',')
+      : [
+          "http://localhost:5173",
+          "http://127.0.0.1:5173",
+          "https://watchtug.live",
+          "https://www.watchtug.live"
+        ],
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL 
+    ? process.env.CLIENT_URL.split(',')
+    : [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://watchtug.live",
+        "https://www.watchtug.live"
+      ],
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
 // Oda yönetimi

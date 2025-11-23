@@ -27,13 +27,20 @@ export const SocketProvider = ({ children }) => {
   } = useStore();
 
   useEffect(() => {
+    // Eğer site "localhost"ta çalışıyorsa lokal sunucuya,
+    // Yoksa (yani watchtug.live'daysa) gerçek sunucuya bağlansın.
+    const SOCKET_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? (import.meta.env.VITE_SERVER_URL || 'http://localhost:3000')
+      : (import.meta.env.VITE_SERVER_URL || 'https://watchtug.live');
+
     // Socket bağlantısını oluştur
-    const socket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3000', {
+    const socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: Infinity,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      withCredentials: true
     });
 
     socketRef.current = socket;
