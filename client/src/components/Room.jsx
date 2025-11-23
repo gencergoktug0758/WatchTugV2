@@ -7,7 +7,7 @@ import ChatBox from './ChatBox';
 import UserList from './UserList';
 import { ToastContainer } from './Toast';
 import Footer from './Footer';
-import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2, Theater, X } from 'lucide-react';
 
 const Room = () => {
   const { roomId: urlRoomId } = useParams();
@@ -17,6 +17,7 @@ const Room = () => {
   const [toasts, setToasts] = useState([]);
   const [isJoining, setIsJoining] = useState(true);
   const [hasEmittedJoin, setHasEmittedJoin] = useState(false);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
 
   const addToast = (message, type = 'info', duration = 3000) => {
     const id = Date.now().toString();
@@ -271,27 +272,86 @@ const Room = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-180px)]">
-          {/* Video Player - Takes 2 columns on desktop, full width on mobile */}
-          <div className="lg:col-span-2 order-1 lg:order-1 min-h-[400px] lg:min-h-0 animate-slide-up">
+      <div className={`mx-auto transition-all duration-300 ${isTheaterMode ? 'w-full px-0' : 'max-w-7xl'}`}>
+        <div className={`grid gap-4 transition-all duration-300 ${
+          isTheaterMode 
+            ? 'grid-cols-1 h-[calc(100vh-180px)]' 
+            : 'grid-cols-1 lg:grid-cols-3 lg:h-[calc(100vh-180px)]'
+        }`}>
+          {/* Video Player */}
+          <div className={`order-1 min-h-[400px] lg:min-h-0 animate-slide-up ${
+            isTheaterMode ? 'h-full' : 'lg:col-span-2'
+          }`}>
             <VideoPlayer />
           </div>
 
-          {/* Sidebar - Chat and Users */}
-          <div className="lg:col-span-1 flex flex-col gap-4 order-2 lg:order-2 lg:h-[calc(100vh-180px)] animate-slide-up delay-100">
-            {/* User List */}
-            <div className="flex-shrink-0">
-              <UserList />
-            </div>
+          {/* Sidebar - Chat and Users (Normal Mode) */}
+          {!isTheaterMode && (
+            <div className="lg:col-span-1 flex flex-col gap-4 order-2 lg:order-2 lg:h-[calc(100vh-180px)] animate-slide-up delay-100">
+              {/* User List */}
+              <div className="flex-shrink-0">
+                <UserList />
+              </div>
 
-            {/* Chat Box */}
-            <div className="flex-1 min-h-[300px] lg:min-h-0">
-              <ChatBox />
+              {/* Chat Box */}
+              <div className="flex-1 min-h-[300px] lg:min-h-0">
+                <ChatBox />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Theater Mode Sidebar - Floating (Mobile & Desktop) */}
+          {isTheaterMode && (
+            <div className="fixed bottom-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] sm:w-96 animate-slide-up">
+              <div className="bg-dark-surface/95 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-2xl flex flex-col max-h-[60vh] sm:max-h-[70vh]">
+                {/* Header with close button */}
+                <div className="flex items-center justify-between p-3 border-b border-dark-surface2">
+                  <div className="flex items-center gap-2">
+                    <Theater className="w-4 h-4 text-dark-text2" />
+                    <span className="text-dark-text text-sm font-semibold">Tiyatro Modu</span>
+                  </div>
+                  <button
+                    onClick={() => setIsTheaterMode(false)}
+                    className="p-1.5 hover:bg-dark-surface2 rounded-lg transition"
+                  >
+                    <X className="w-4 h-4 text-dark-text2" />
+                  </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="overflow-y-auto flex-1">
+                  {/* User List */}
+                  <div className="p-3 border-b border-dark-surface2">
+                    <UserList />
+                  </div>
+
+                  {/* Chat Box */}
+                  <div className="h-[300px] sm:h-[400px]">
+                    <ChatBox />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Theater Mode Toggle Button */}
+      <button
+        onClick={() => setIsTheaterMode(!isTheaterMode)}
+        className={`fixed bottom-4 left-4 z-30 p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+          isTheaterMode
+            ? 'bg-dark-accent hover:bg-red-600 text-white'
+            : 'bg-dark-surface/90 backdrop-blur-sm hover:bg-dark-surface text-dark-text border border-dark-surface2'
+        }`}
+        title={isTheaterMode ? 'Tiyatro Modunu Kapat' : 'Tiyatro Modunu Aç'}
+      >
+        {isTheaterMode ? (
+          <X className="w-5 h-5" />
+        ) : (
+          <Theater className="w-5 h-5" />
+        )}
+      </button>
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />

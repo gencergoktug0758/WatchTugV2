@@ -1,6 +1,6 @@
 const Footer = () => {
   return (
-    <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 animate-fade-in">
+    <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-50 animate-fade-in">
       <div className="flex items-center gap-2 text-xs sm:text-sm font-medium bg-dark-surface/90 backdrop-blur-sm px-4 py-2.5 sm:px-5 sm:py-3 rounded-lg border border-pink-500/30 shadow-lg hover:bg-dark-surface transition-all duration-300 hover:border-pink-500/50 hover:shadow-pink-500/20">
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-pink-500 to-purple-500 font-bold text-sm sm:text-base neon-pink">
           ECE
