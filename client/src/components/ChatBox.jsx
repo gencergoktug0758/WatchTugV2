@@ -3,7 +3,7 @@ import { Send, MessageSquare } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
 
-const ChatBox = () => {
+const ChatBox = ({ isTheaterMode = false }) => {
   const [message, setMessage] = useState('');
   const chatEndRef = useRef(null);
   const { chatHistory, roomId, username } = useStore();
@@ -32,7 +32,11 @@ const ChatBox = () => {
   };
 
   return (
-    <div className="bg-dark-surface/90 backdrop-blur-sm rounded-xl border border-dark-surface2 flex flex-col h-full shadow-lg">
+    <div className={`flex flex-col h-full ${
+      isTheaterMode 
+        ? 'bg-dark-surface border-l border-dark-surface2 rounded-none' 
+        : 'bg-dark-surface/90 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-lg'
+    }`}>
       <div className="flex items-center gap-2 p-4 border-b border-dark-surface2">
         <MessageSquare className="w-5 h-5 text-dark-accent" />
         <h3 className="text-dark-text font-semibold">Sohbet</h3>

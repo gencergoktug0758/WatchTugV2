@@ -219,75 +219,86 @@ const Room = () => {
   const displayRoomId = urlRoomId || roomId;
 
   return (
-    <div className="min-h-screen bg-dark-bg p-4 animate-fade-in">
-      {/* Header */}
-      <div className="max-w-7xl mx-auto mb-4">
-        <div className="bg-dark-surface/90 backdrop-blur-sm rounded-xl p-4 border border-dark-surface2 flex flex-wrap items-center justify-between gap-4 shadow-lg animate-slide-down">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-dark-text font-bold text-lg flex items-center gap-2">
-                <span className="text-dark-accent">Oda:</span>
-                <span className="font-mono">{displayRoomId}</span>
-              </h2>
-              <p className="text-dark-text2 text-sm flex items-center gap-2 mt-1">
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
-                {username}
-              </p>
-            </div>
-            <button
-              onClick={copyRoomId}
-              className="px-3 py-2 bg-dark-surface2 hover:bg-dark-accent/20 rounded-lg transition-all duration-200 flex items-center gap-2 text-dark-text text-sm transform hover:scale-105 active:scale-95 border border-dark-surface2 hover:border-dark-accent/50"
-              title="Oda ID'sini Kopyala"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-2 bg-dark-surface2 rounded-lg">
-              {isConnected ? (
-                <>
-                  <Wifi className="w-5 h-5 text-green-500 animate-pulse" />
-                  <span className="text-dark-text text-sm font-medium">
-                    {ping > 0 ? `${ping}ms` : 'Bağlı'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-5 h-5 text-red-500" />
-                  <span className="text-dark-text text-sm text-red-500">Bağlantı Yok</span>
-                </>
-              )}
+    <div className={`min-h-screen bg-dark-bg animate-fade-in ${isTheaterMode ? 'h-screen overflow-hidden p-0' : 'p-4'}`}>
+      {/* Header - Gizle tiyatro modunda */}
+      {!isTheaterMode && (
+        <div className="max-w-7xl mx-auto mb-4">
+          <div className="bg-dark-surface/90 backdrop-blur-sm rounded-xl p-4 border border-dark-surface2 flex flex-wrap items-center justify-between gap-4 shadow-lg animate-slide-down">
+            <div className="flex items-center gap-4">
+              <div>
+                <h2 className="text-dark-text font-bold text-lg flex items-center gap-2">
+                  <span className="text-dark-accent">Oda:</span>
+                  <span className="font-mono">{displayRoomId}</span>
+                </h2>
+                <p className="text-dark-text2 text-sm flex items-center gap-2 mt-1">
+                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                  {username}
+                </p>
+              </div>
+              <button
+                onClick={copyRoomId}
+                className="px-3 py-2 bg-dark-surface2 hover:bg-dark-accent/20 rounded-lg transition-all duration-200 flex items-center gap-2 text-dark-text text-sm transform hover:scale-105 active:scale-95 border border-dark-surface2 hover:border-dark-accent/50"
+                title="Oda ID'sini Kopyala"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
             </div>
 
-            <button
-              onClick={handleLeaveRoom}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
-            >
-              <LogOut className="w-4 h-4" />
-              Çıkış
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-2 bg-dark-surface2 rounded-lg">
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-5 h-5 text-green-500 animate-pulse" />
+                    <span className="text-dark-text text-sm font-medium">
+                      {ping > 0 ? `${ping}ms` : 'Bağlı'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-5 h-5 text-red-500" />
+                    <span className="text-dark-text text-sm text-red-500">Bağlantı Yok</span>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={handleLeaveRoom}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+              >
+                <LogOut className="w-4 h-4" />
+                Çıkış
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
-      <div className={`mx-auto transition-all duration-300 ${isTheaterMode ? 'w-full px-0' : 'max-w-7xl'}`}>
-        <div className={`grid gap-4 transition-all duration-300 ${
+      <div className={`transition-all duration-300 ${
+        isTheaterMode 
+          ? 'h-screen w-full' 
+          : 'max-w-7xl mx-auto px-4'
+      }`}>
+        <div className={`grid transition-all duration-300 ${
           isTheaterMode 
-            ? 'grid-cols-1 h-[calc(100vh-180px)]' 
-            : 'grid-cols-1 lg:grid-cols-3 lg:h-[calc(100vh-180px)]'
+            ? 'grid-cols-1 lg:grid-cols-[1fr_400px] h-screen gap-0' 
+            : 'grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-180px)]'
         }`}>
-          {/* Video Player */}
-          <div className={`order-1 min-h-[400px] lg:min-h-0 animate-slide-up ${
-            isTheaterMode ? 'h-full' : 'lg:col-span-2'
-          }`}>
-            <VideoPlayer />
+          {/* Video Player - Sol tarafta tam ekran gibi (İLK SIRADA) */}
+          <div className={`${
+            isTheaterMode 
+              ? 'h-screen w-full' 
+              : 'min-h-[400px] lg:min-h-0 lg:col-span-2'
+          } animate-slide-up`}>
+            <VideoPlayer 
+              isTheaterMode={isTheaterMode}
+              onTheaterModeToggle={() => setIsTheaterMode(!isTheaterMode)}
+            />
           </div>
 
-          {/* Sidebar - Chat and Users (Normal Mode) */}
+          {/* Sidebar - Normal modda Chat ve Users */}
           {!isTheaterMode && (
-            <div className="lg:col-span-1 flex flex-col gap-4 order-2 lg:order-2 lg:h-[calc(100vh-180px)] animate-slide-up delay-100">
+            <div className="flex flex-col gap-4 animate-slide-up delay-100 lg:col-span-1 lg:h-[calc(100vh-180px)]">
               {/* User List */}
               <div className="flex-shrink-0">
                 <UserList />
@@ -300,15 +311,27 @@ const Room = () => {
             </div>
           )}
 
-          {/* Theater Mode Sidebar - Floating (Mobile & Desktop) */}
+          {/* Theater Mode - Sadece Chat sağ tarafta (İKİNCİ SIRADA) */}
           {isTheaterMode && (
-            <div className="fixed bottom-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] sm:w-96 animate-slide-up">
-              <div className="bg-dark-surface/95 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-2xl flex flex-col max-h-[60vh] sm:max-h-[70vh]">
+            <div className="hidden lg:flex h-screen bg-dark-surface border-l border-dark-surface2 animate-slide-in-right">
+              <div className="w-full h-full flex flex-col">
+                {/* Chat Box - Tam yükseklik */}
+                <div className="flex-1 h-full overflow-hidden">
+                  <ChatBox isTheaterMode={true} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Theater Mode - Mobile Chat (Floating) */}
+          {isTheaterMode && (
+            <div className="lg:hidden fixed bottom-4 right-4 z-30 w-[calc(100vw-2rem)] max-w-sm animate-slide-up">
+              <div className="bg-dark-surface/95 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-2xl flex flex-col max-h-[50vh]">
                 {/* Header with close button */}
                 <div className="flex items-center justify-between p-3 border-b border-dark-surface2">
                   <div className="flex items-center gap-2">
                     <Theater className="w-4 h-4 text-dark-text2" />
-                    <span className="text-dark-text text-sm font-semibold">Tiyatro Modu</span>
+                    <span className="text-dark-text text-sm font-semibold">Chat</span>
                   </div>
                   <button
                     onClick={() => setIsTheaterMode(false)}
@@ -318,17 +341,9 @@ const Room = () => {
                   </button>
                 </div>
 
-                {/* Scrollable content */}
-                <div className="overflow-y-auto flex-1">
-                  {/* User List */}
-                  <div className="p-3 border-b border-dark-surface2">
-                    <UserList />
-                  </div>
-
-                  {/* Chat Box */}
-                  <div className="h-[300px] sm:h-[400px]">
-                    <ChatBox />
-                  </div>
+                {/* Chat Box */}
+                <div className="h-[300px] overflow-hidden">
+                  <ChatBox isTheaterMode={true} />
                 </div>
               </div>
             </div>
@@ -336,28 +351,11 @@ const Room = () => {
         </div>
       </div>
 
-      {/* Theater Mode Toggle Button */}
-      <button
-        onClick={() => setIsTheaterMode(!isTheaterMode)}
-        className={`fixed bottom-4 left-4 z-30 p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-95 ${
-          isTheaterMode
-            ? 'bg-dark-accent hover:bg-red-600 text-white'
-            : 'bg-dark-surface/90 backdrop-blur-sm hover:bg-dark-surface text-dark-text border border-dark-surface2'
-        }`}
-        title={isTheaterMode ? 'Tiyatro Modunu Kapat' : 'Tiyatro Modunu Aç'}
-      >
-        {isTheaterMode ? (
-          <X className="w-5 h-5" />
-        ) : (
-          <Theater className="w-5 h-5" />
-        )}
-      </button>
-
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       
-      {/* Footer */}
-      <Footer />
+      {/* Footer - Gizle tiyatro modunda */}
+      {!isTheaterMode && <Footer />}
     </div>
   );
 };

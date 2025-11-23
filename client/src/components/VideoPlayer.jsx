@@ -1,9 +1,9 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Share2, Square } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Share2, Square, Theater } from 'lucide-react';
 
-const VideoPlayer = () => {
+const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
   const videoRef = useRef(null);
   const localStreamRef = useRef(null);
   const peerConnectionsRef = useRef(new Map());
@@ -346,13 +346,19 @@ const VideoPlayer = () => {
   }, []);
 
   return (
-    <div className="bg-dark-surface rounded-lg border border-dark-surface2 overflow-hidden flex flex-col h-full">
+    <div className={`overflow-hidden flex flex-col h-full ${
+      isTheaterMode 
+        ? 'bg-black rounded-none border-none' 
+        : 'bg-dark-surface rounded-lg border border-dark-surface2'
+    }`}>
       <div className="relative flex-1 bg-black group">
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-contain"
+          className={`w-full h-full ${
+            isTheaterMode ? 'object-cover' : 'object-contain'
+          }`}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />
@@ -434,6 +440,21 @@ const VideoPlayer = () => {
               className="flex-1 h-2 bg-dark-surface2 rounded-lg appearance-none cursor-pointer"
             />
 
+            {/* Theater Mode Toggle Button */}
+            {onTheaterModeToggle && (
+              <button
+                onClick={onTheaterModeToggle}
+                className={`p-2 rounded-lg transition ${
+                  isTheaterMode
+                    ? 'bg-dark-accent/80 hover:bg-dark-accent text-white'
+                    : 'bg-dark-surface/80 hover:bg-dark-surface text-white'
+                }`}
+                title={isTheaterMode ? 'Tiyatro Modunu Kapat' : 'Tiyatro Modunu Aç'}
+              >
+                <Theater className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={toggleFullscreen}
               className="p-2 bg-dark-surface/80 rounded-lg hover:bg-dark-surface transition"
@@ -461,8 +482,8 @@ const VideoPlayer = () => {
         </div>
       </div>
 
-      {/* Share button (Host only) */}
-      {isHost && (
+      {/* Share button (Host only) - Gizle tiyatro modunda */}
+      {isHost && !isTheaterMode && (
         <div className="p-4 border-t border-dark-surface2">
           {!isSharing ? (
             <button
