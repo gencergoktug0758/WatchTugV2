@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
 import VideoPlayer from './VideoPlayer';
 import ChatBox from './ChatBox';
 import UserList from './UserList';
 import { ToastContainer } from './Toast';
-import { LogOut, Copy, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2 } from 'lucide-react';
 
 const Room = () => {
-  const { roomId, username, userId, ping, connectionStatus, resetRoom, clearAll } = useStore();
-  const { isConnected } = useSocket();
+  const { roomId: urlRoomId } = useParams();
+  const navigate = useNavigate();
+  const { roomId, username, userId, ping, connectionStatus, resetRoom, clearAll, users, setRoomId, setUsername, setUserId } = useStore();
+  const { isConnected, emit, on, off } = useSocket();
   const [toasts, setToasts] = useState([]);
-  const { on, off } = useSocket();
+  const [isJoining, setIsJoining] = useState(true);
 
   const addToast = (message, type = 'info', duration = 3000) => {
     const id = Date.now().toString();
@@ -21,6 +24,77 @@ const Room = () => {
   const removeToast = (id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
+
+  // Initialize room connection from URL
+  useEffect(() => {
+    if (!urlRoomId) {
+      navigate('/');
+      return;
+    }
+
+    // If we have username and userId, join the room
+    if (username && userId && isConnected) {
+      setRoomId(urlRoomId);
+      emit('join-room', { roomId: urlRoomId, username, userId });
+    } else if (!username || !userId) {
+      // No user data, redirect to login
+      navigate('/');
+    }
+  }, [urlRoomId, username, userId, isConnected, navigate, setRoomId, emit]);
+
+  // Handle room joined/created events
+  useEffect(() => {
+    const handleRoomJoined = (data) => {
+      console.log('Room joined event received:', data);
+      setIsJoining(false);
+    };
+
+    const handleRoomCreated = (data) => {
+      console.log('Room created event received:', data);
+      setIsJoining(false);
+    };
+
+    const handleRoomNotFound = () => {
+      setIsJoining(false);
+      addToast('Oda bulunamadı! Ana sayfaya yönlendiriliyorsunuz...', 'error', 3000);
+      setTimeout(() => {
+        resetRoom();
+        clearAll();
+        navigate('/');
+      }, 2000);
+    };
+
+    if (isConnected) {
+      on('room-joined', handleRoomJoined);
+      on('room-created', handleRoomCreated);
+      on('room-not-found', handleRoomNotFound);
+    }
+
+    return () => {
+      off('room-joined', handleRoomJoined);
+      off('room-created', handleRoomCreated);
+      off('room-not-found', handleRoomNotFound);
+    };
+  }, [isConnected, on, off, navigate, resetRoom, clearAll, addToast]);
+
+  // Handle room joined - hide loading after connection and users loaded
+  useEffect(() => {
+    if (isConnected && users.length > 0 && !isJoining) {
+      // Already joined, no need to show loading
+      return;
+    }
+    
+    // If connected but no users yet, wait a bit
+    if (isConnected && users.length === 0) {
+      const timer = setTimeout(() => {
+        if (users.length === 0) {
+          // Still no users after 2 seconds, might be an issue
+          console.log('No users after timeout, checking connection...');
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, users, isJoining]);
 
   // Handle socket events for toasts
   useEffect(() => {
@@ -55,34 +129,64 @@ const Room = () => {
       off('stream-started', handleStreamStarted);
       off('stream-stopped', handleStreamStopped);
     };
-  }, [userId, on, off]);
+  }, [userId, on, off, addToast]);
 
   const handleLeaveRoom = () => {
     if (confirm('Odadan ayrılmak istediğinize emin misiniz?')) {
       resetRoom();
       clearAll();
-      window.location.reload();
+      navigate('/');
     }
   };
 
   const copyRoomId = () => {
-    navigator.clipboard.writeText(roomId);
+    navigator.clipboard.writeText(urlRoomId || roomId);
     addToast('Oda ID kopyalandı!', 'info', 2000);
   };
 
+  // Loading overlay
+  if (isJoining || !isConnected) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="relative mb-6">
+            <Loader2 className="w-16 h-16 text-dark-accent mx-auto animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-dark-accent/20 border-t-dark-accent rounded-full animate-spin"></div>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-dark-text mb-2 animate-pulse">
+            {!isConnected ? 'Bağlanıyor...' : 'Odaya katılıyor...'}
+          </h2>
+          <p className="text-dark-text2">
+            {urlRoomId && `Oda: ${urlRoomId}`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayRoomId = urlRoomId || roomId;
+
   return (
-    <div className="min-h-screen bg-dark-bg p-4">
+    <div className="min-h-screen bg-dark-bg p-4 animate-fade-in">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-4">
-        <div className="bg-dark-surface rounded-lg p-4 border border-dark-surface2 flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-dark-surface/90 backdrop-blur-sm rounded-xl p-4 border border-dark-surface2 flex flex-wrap items-center justify-between gap-4 shadow-lg animate-slide-down">
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="text-dark-text font-bold text-lg">Oda: {roomId}</h2>
-              <p className="text-dark-text2 text-sm">Kullanıcı: {username}</p>
+              <h2 className="text-dark-text font-bold text-lg flex items-center gap-2">
+                <span className="text-dark-accent">Oda:</span>
+                <span className="font-mono">{displayRoomId}</span>
+              </h2>
+              <p className="text-dark-text2 text-sm flex items-center gap-2 mt-1">
+                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                {username}
+              </p>
             </div>
             <button
               onClick={copyRoomId}
-              className="px-3 py-2 bg-dark-surface2 hover:bg-dark-surface2/80 rounded-lg transition flex items-center gap-2 text-dark-text text-sm"
+              className="px-3 py-2 bg-dark-surface2 hover:bg-dark-accent/20 rounded-lg transition-all duration-200 flex items-center gap-2 text-dark-text text-sm transform hover:scale-105 active:scale-95 border border-dark-surface2 hover:border-dark-accent/50"
               title="Oda ID'sini Kopyala"
             >
               <Copy className="w-4 h-4" />
@@ -90,11 +194,11 @@ const Room = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-dark-surface2 rounded-lg">
               {isConnected ? (
                 <>
-                  <Wifi className="w-5 h-5 text-green-500" />
-                  <span className="text-dark-text text-sm">
+                  <Wifi className="w-5 h-5 text-green-500 animate-pulse" />
+                  <span className="text-dark-text text-sm font-medium">
                     {ping > 0 ? `${ping}ms` : 'Bağlı'}
                   </span>
                 </>
@@ -108,7 +212,7 @@ const Room = () => {
 
             <button
               onClick={handleLeaveRoom}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
             >
               <LogOut className="w-4 h-4" />
               Çıkış
@@ -121,12 +225,12 @@ const Room = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-180px)]">
           {/* Video Player - Takes 2 columns on desktop, full width on mobile */}
-          <div className="lg:col-span-2 order-1 lg:order-1 min-h-[400px] lg:min-h-0">
+          <div className="lg:col-span-2 order-1 lg:order-1 min-h-[400px] lg:min-h-0 animate-slide-up">
             <VideoPlayer />
           </div>
 
           {/* Sidebar - Chat and Users */}
-          <div className="lg:col-span-1 flex flex-col gap-4 order-2 lg:order-2 lg:h-[calc(100vh-180px)]">
+          <div className="lg:col-span-1 flex flex-col gap-4 order-2 lg:order-2 lg:h-[calc(100vh-180px)] animate-slide-up delay-100">
             {/* User List */}
             <div className="flex-shrink-0">
               <UserList />
@@ -147,4 +251,3 @@ const Room = () => {
 };
 
 export default Room;
-

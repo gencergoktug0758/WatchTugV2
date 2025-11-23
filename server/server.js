@@ -24,14 +24,51 @@ io.on('connection', (socket) => {
 
   // Oda oluştur
   socket.on('create-room', ({ roomId, username, userId }) => {
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, {
-        hostId: userId,
-        users: new Map(),
-        streamActive: false,
-        chatHistory: []
-      });
+    // Check if room already exists and has active users
+    if (rooms.has(roomId)) {
+      const existingRoom = rooms.get(roomId);
+      // If room exists and has users, join instead of create
+      if (existingRoom.users.size > 0) {
+        socket.emit('room-already-exists', { roomId });
+        // Auto-join the existing room
+        existingRoom.users.set(userId, {
+          socketId: socket.id,
+          username,
+          userId,
+          joinedAt: Date.now()
+        });
+
+        socket.join(roomId);
+        socket.data.roomId = roomId;
+        socket.data.userId = userId;
+        socket.data.username = username;
+
+        socket.emit('room-joined', {
+          roomId,
+          isHost: userId === existingRoom.hostId,
+          users: Array.from(existingRoom.users.values()),
+          chatHistory: existingRoom.chatHistory,
+          streamActive: existingRoom.streamActive
+        });
+
+        socket.to(roomId).emit('user-joined', {
+          userId,
+          username,
+          users: Array.from(existingRoom.users.values())
+        });
+
+        console.log(`User ${username} (${userId}) auto-joined existing room ${roomId}`);
+        return;
+      }
     }
+
+    // Create new room
+    rooms.set(roomId, {
+      hostId: userId,
+      users: new Map(),
+      streamActive: false,
+      chatHistory: []
+    });
     
     const room = rooms.get(roomId);
     room.users.set(userId, {
@@ -61,45 +98,67 @@ io.on('connection', (socket) => {
       users: Array.from(room.users.values())
     });
 
-    console.log(`User ${username} (${userId}) joined room ${roomId}`);
+    console.log(`User ${username} (${userId}) created room ${roomId}`);
   });
 
-  // Odaya katıl
+  // Odaya katıl - eğer oda yoksa otomatik oluştur
   socket.on('join-room', ({ roomId, username, userId }) => {
+    // If room doesn't exist, create it automatically
     if (!rooms.has(roomId)) {
-      socket.emit('room-not-found', { roomId });
-      return;
+      rooms.set(roomId, {
+        hostId: userId,
+        users: new Map(),
+        streamActive: false,
+        chatHistory: []
+      });
+      console.log(`Room ${roomId} created automatically for user ${username}`);
     }
 
     const room = rooms.get(roomId);
-    room.users.set(userId, {
-      socketId: socket.id,
-      username,
-      userId,
-      joinedAt: Date.now()
-    });
+    const wasExistingUser = room.users.has(userId);
+    
+    // Check if user is already in room (reconnection)
+    if (wasExistingUser) {
+      // User already in room, just update socket ID
+      const existingUser = room.users.get(userId);
+      existingUser.socketId = socket.id;
+    } else {
+      // Add new user to room
+      room.users.set(userId, {
+        socketId: socket.id,
+        username,
+        userId,
+        joinedAt: Date.now()
+      });
+    }
 
     socket.join(roomId);
     socket.data.roomId = roomId;
     socket.data.userId = userId;
     socket.data.username = username;
 
+    // Determine if user is host (first user or original host)
+    const isHost = userId === room.hostId;
+
     socket.emit('room-joined', {
       roomId,
-      isHost: userId === room.hostId,
+      isHost: isHost,
       users: Array.from(room.users.values()),
       chatHistory: room.chatHistory,
       streamActive: room.streamActive
     });
 
-    socket.to(roomId).emit('user-joined', {
-      userId,
-      username,
-      users: Array.from(room.users.values())
-    });
+    // Notify other users (only if this is a new user joining, not a reconnection)
+    if (!wasExistingUser && room.users.size > 1) {
+      socket.to(roomId).emit('user-joined', {
+        userId,
+        username,
+        users: Array.from(room.users.values())
+      });
+    }
 
     // Eğer stream aktifse ve host varsa, host'a yeni kullanıcıya offer göndermesi için bildir
-    if (room.streamActive && room.hostId) {
+    if (room.streamActive && room.hostId && room.hostId !== userId) {
       const hostUser = Array.from(room.users.values()).find(u => u.userId === room.hostId);
       if (hostUser) {
         // Small delay to ensure user is fully joined

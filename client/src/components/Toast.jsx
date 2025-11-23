@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, UserPlus, UserMinus, Video, VideoOff } from 'lucide-react';
+import { X, UserPlus, UserMinus, Video, VideoOff, AlertCircle } from 'lucide-react';
 
 const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -23,6 +23,8 @@ const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
         return <Video className="w-5 h-5" />;
       case 'stream-stopped':
         return <VideoOff className="w-5 h-5" />;
+      case 'error':
+        return <AlertCircle className="w-5 h-5" />;
       default:
         return null;
     }
@@ -38,6 +40,8 @@ const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
         return 'bg-blue-600';
       case 'stream-stopped':
         return 'bg-red-600';
+      case 'error':
+        return 'bg-red-700';
       default:
         return 'bg-dark-surface2';
     }

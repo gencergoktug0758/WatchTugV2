@@ -1,38 +1,22 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
-import { useStore } from './store/useStore';
 import Login from './components/Login';
 import Room from './components/Room';
 
 function App() {
-  const { roomId, username, userId } = useStore();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Sayfa yüklendiğinde localStorage'dan verileri kontrol et
-    setIsLoading(false);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-        <div className="text-dark-text text-xl">Yükleniyor...</div>
-      </div>
-    );
-  }
-
   return (
-    <SocketProvider>
-      <div className="min-h-screen bg-dark-bg">
-        {roomId && username && userId ? (
-          <Room />
-        ) : (
-          <Login />
-        )}
-      </div>
-    </SocketProvider>
+    <BrowserRouter>
+      <SocketProvider>
+        <div className="min-h-screen bg-dark-bg">
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/room/:roomId" element={<Room />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </SocketProvider>
+    </BrowserRouter>
   );
 }
 
 export default App;
-
