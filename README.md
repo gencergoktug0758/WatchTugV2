@@ -1,86 +1,201 @@
-# WTUG - Modern Ekran Paylaşım Uygulaması
+# WatchTug 🎬
 
-<div align="center">
-  <img src="public/img/logo.svg" alt="WTUG Logo" width="120">
-</div>
+WebRTC tabanlı, 1-e-1 (P2P) film izleme ve ekran paylaşımı platformu. Kullanıcılar oda kurup, yüksek kalitede ve düşük gecikmeyle ekran paylaşarak birlikte film izleyebilirler.
 
-Modern, mobil uyumlu ve düşük gecikmeli gerçek zamanlı ekran paylaşım uygulaması. WebRTC teknolojisi ile düşük gecikmeli ekran paylaşımı sağlar.
+## ✨ Özellikler
 
-## Özellikler
+- 🎥 **Ekran Paylaşımı**: Sistem sesi dahil yüksek kaliteli ekran paylaşımı
+- 💬 **Gerçek Zamanlı Chat**: Socket.io ile anlık mesajlaşma
+- 👥 **Kullanıcı Yönetimi**: Online kullanıcı listesi ve durum takibi
+- 🔄 **Yeniden Bağlanma**: Sayfa yenilendiğinde veya bağlantı koptuğunda otomatik yeniden bağlanma
+- 📱 **Mobil Uyumlu**: Responsive tasarım, mobil ve masaüstü desteği
+- 🌙 **Karanlık Tema**: Modern, Netflix benzeri karanlık arayüz
+- ⚡ **Düşük Gecikme**: WebRTC ile P2P bağlantı, minimum gecikme
+- 🔔 **Bildirimler**: Kullanıcı giriş/çıkış ve yayın durumu bildirimleri
 
-- ⚡ **Düşük Gecikme**: WebRTC teknolojisi ile gerçek zamanlı iletişim
-- 🎨 **Modern Arayüz**: Tailwind CSS ile tasarlanmış mobil uyumlu arayüz
-- 🔒 **Güvenli P2P Bağlantı**: Veriler sunucu üzerinden geçmeden doğrudan kullanıcılar arasında aktarılır
-- 💬 **Anlık Mesajlaşma**: Ekran paylaşımı sırasında gerçek zamanlı sohbet imkanı
-- 📱 **Mobil Uyumlu**: Tüm cihazlardan erişim imkanı
-- 🌐 **Tarayıcı Tabanlı**: Kurulum gerektirmez, modern tarayıcılarda çalışır
+## 🛠️ Teknoloji Yığını
 
-## Teknolojiler
+### Frontend
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **Lucide React** - Icons
+- **Zustand** - State management
+- **Socket.io Client** - Real-time communication
 
-- **Frontend**: HTML5, CSS3 (Tailwind CSS), JavaScript (ES6+)
-- **Backend**: Node.js, Express.js
-- **Gerçek Zamanlı İletişim**: Socket.io, WebRTC
-- **Media**: MediaDevices API, Screen Capture API
+### Backend
+- **Node.js** - Runtime
+- **Express** - Web server
+- **Socket.io** - WebSocket server
+- **CORS** - Cross-origin resource sharing
 
-## Kurulum
+### WebRTC
+- **Native WebRTC API** - P2P connections
+- **STUN Servers** - NAT traversal (Google & Twilio)
+
+## 📦 Kurulum
 
 ### Gereksinimler
+- Node.js 18+ 
+- npm veya yarn
 
-- Node.js (v16.0.0 veya üzeri)
-- npm (v8.0.0 veya üzeri)
+### Adımlar
 
-### Kurulum Adımları
+1. **Repository'yi klonlayın**
+```bash
+git clone <repository-url>
+cd WatchTug-main
+```
 
-1. Projeyi klonlayın veya indirin:
-   ```bash
-   git clone https://github.com/kullaniciadi/wtug.git
-   cd wtug
-   ```
+2. **Backend'i kurun ve çalıştırın**
+```bash
+cd server
+npm install
+npm start
+```
 
-2. Bağımlılıkları yükleyin:
-   ```bash
-   npm install
-   ```
+Backend varsayılan olarak `http://localhost:3000` portunda çalışacaktır.
 
-3. Uygulamayı başlatın:
-   ```bash
-   npm start
-   ```
+3. **Frontend'i kurun ve çalıştırın**
+```bash
+cd ../client
+npm install
+npm run dev
+```
 
-4. Tarayıcınızda aşağıdaki adresi açın:
-   ```
-   http://localhost:3000
-   ```
-(EĞER NGROK İLE KULLANMAK İSTİYORSANIZ "simple-launcher.bat" DOSYASINI AÇIN.)
-## İnternet Üzerinden Erişim
+Frontend varsayılan olarak `http://localhost:5173` portunda çalışacaktır.
 
-Uygulamayı internet üzerinden erişilebilir yapmak için Ngrok kullanabilirsiniz:
+4. **Tarayıcıda açın**
+```
+http://localhost:5173
+```
 
-1. `ngrok_auth.txt` dosyasına Ngrok authtoken'ınızı ekleyin
-2. `simple-launcher.bat` dosyasını çalıştırın
-3. Verilen Ngrok URL'i ile uygulamaya erişebilirsiniz
+## 🚀 Kullanım
 
-## Tarayıcı Desteği
+1. **Oda Oluşturma**
+   - Kullanıcı adınızı girin
+   - "Oda Oluştur" butonuna tıklayın
+   - Size verilen Oda ID'sini arkadaşınızla paylaşın
 
-- Google Chrome (son sürüm)
-- Mozilla Firefox (son sürüm)
-- Microsoft Edge (Chromium tabanlı)
-- Safari 14 ve üzeri
-- Mobil tarayıcılar (Chrome for Android, Safari for iOS)
+2. **Odaya Katılma**
+   - Kullanıcı adınızı girin
+   - Oda ID'sini girin
+   - "Odaya Katıl" butonuna tıklayın
 
-## Lisans
+3. **Ekran Paylaşımı (Host)**
+   - Host kullanıcı "Ekran Paylaşımını Başlat" butonuna tıklar
+   - Tarayıcı ekran paylaşımı izni ister
+   - Sistem sesi dahil paylaşım başlar
+   - Diğer kullanıcılar otomatik olarak yayını görür
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasını inceleyebilirsiniz.
+4. **Chat**
+   - Sağ paneldeki chat kutusuna mesaj yazın
+   - Enter tuşu ile gönderin
+   - Chat geçmişi sayfa yenilendiğinde korunur
 
-## Teşekkürler
+## 🔧 Yapılandırma
 
-- [WebRTC](https://webrtc.org/) - P2P iletişim için teknoloji
-- [Socket.io](https://socket.io/) - Gerçek zamanlı iletişim için kütüphane
-- [Tailwind CSS](https://tailwindcss.com/) - Stil için kullanılan CSS framework'ü
-- [Font Awesome](https://fontawesome.com/) - Kullanılan ikonlar için
+### Environment Variables
+
+**Backend (.env)**
+```env
+PORT=3000
+CLIENT_URL=http://localhost:5173
+```
+
+**Frontend (.env)**
+```env
+VITE_SERVER_URL=http://localhost:3000
+```
+
+### STUN/TURN Sunucuları
+
+Proje Google ve Twilio'nun ücretsiz STUN sunucularını kullanır. Farklı ağlardaki kullanıcılar için TURN sunucusu gerekebilir. TURN sunucusu eklemek için `client/src/components/VideoPlayer.jsx` dosyasındaki `rtcConfig` objesini düzenleyin:
+
+```javascript
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    // TURN sunucusu ekleyin
+    {
+      urls: 'turn:your-turn-server.com:3478',
+      username: 'your-username',
+      credential: 'your-password'
+    }
+  ]
+};
+```
+
+## 📁 Proje Yapısı
+
+```
+WatchTug-main/
+├── server/
+│   ├── server.js          # Express & Socket.io server
+│   └── package.json
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Login.jsx      # Giriş ekranı
+│   │   │   ├── Room.jsx       # Ana oda arayüzü
+│   │   │   ├── VideoPlayer.jsx # Video player & WebRTC
+│   │   │   ├── ChatBox.jsx    # Chat bileşeni
+│   │   │   ├── UserList.jsx   # Kullanıcı listesi
+│   │   │   └── Toast.jsx      # Bildirimler
+│   │   ├── context/
+│   │   │   └── SocketContext.jsx # Socket.io context
+│   │   ├── store/
+│   │   │   └── useStore.js    # Zustand store
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+## 🔄 Yeniden Bağlanma Mantığı
+
+WatchTug, kullanıcı deneyimini korumak için gelişmiş bir yeniden bağlanma sistemi içerir:
+
+1. **LocalStorage Persistence**: Kullanıcı bilgileri, oda ID'si ve chat geçmişi localStorage'da saklanır
+2. **Otomatik Yeniden Bağlanma**: Sayfa yenilendiğinde veya bağlantı koptuğunda otomatik olarak odaya yeniden bağlanır
+3. **Socket ID Değişimi**: Socket ID değişse bile kullanıcı kimliği (userId) korunur
+4. **Stream Senkronizasyonu**: Yayın durumu ve chat geçmişi otomatik olarak senkronize edilir
+
+## 🐛 Bilinen Sorunlar
+
+- Host kullanıcı sayfayı yenilediğinde yayın durur (beklenen davranış)
+- İzleyici kullanıcı sayfayı yenilediğinde yayın devam eder
+- Bazı tarayıcılarda sistem sesi paylaşımı sınırlı olabilir
+
+## 🔒 Güvenlik Notları
+
+- Bu proje eğitim amaçlıdır
+- Production kullanımı için ek güvenlik önlemleri alınmalıdır
+- TURN sunucuları için kimlik doğrulama eklenmelidir
+- Rate limiting ve DDoS koruması eklenmelidir
+
+## 📝 Lisans
+
+Bu proje MIT lisansı altında lisanslanmıştır.
+
+## 🤝 Katkıda Bulunma
+
+Katkılarınızı bekliyoruz! Lütfen pull request göndermeden önce:
+1. Fork edin
+2. Feature branch oluşturun (`git checkout -b feature/AmazingFeature`)
+3. Commit edin (`git commit -m 'Add some AmazingFeature'`)
+4. Push edin (`git push origin feature/AmazingFeature`)
+5. Pull Request açın
+
+## 📧 İletişim
+
+Sorularınız veya önerileriniz için issue açabilirsiniz.
 
 ---
 
-<div align="center">
-  <p>WTUG - 2025</p>
-</div> 
+**Not**: Bu proje WebRTC teknolojisini kullanır. Farklı ağlardaki kullanıcılar için TURN sunucusu gerekebilir. Ücretsiz TURN sunucuları sınırlıdır, production kullanımı için kendi TURN sunucunuzu kurmanız önerilir.
+
