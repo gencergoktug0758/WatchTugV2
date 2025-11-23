@@ -262,29 +262,36 @@ io.on('connection', (socket) => {
 
     if (roomId && rooms.has(roomId)) {
       const room = rooms.get(roomId);
-      room.users.delete(userId);
+      
+      // Check if user was actually in the room
+      if (room.users.has(userId)) {
+        room.users.delete(userId);
 
-      // Eğer host ayrıldıysa ve başka kullanıcı varsa, yeni host seç
-      if (room.hostId === userId && room.users.size > 0) {
-        const newHost = Array.from(room.users.values())[0];
-        room.hostId = newHost.userId;
-        io.to(roomId).emit('host-changed', { newHostId: newHost.userId });
-      }
+        // Eğer host ayrıldıysa ve başka kullanıcı varsa, yeni host seç
+        if (room.hostId === userId && room.users.size > 0) {
+          const newHost = Array.from(room.users.values())[0];
+          room.hostId = newHost.userId;
+          io.to(roomId).emit('host-changed', { newHostId: newHost.userId });
+          console.log(`Host changed to ${newHost.userId} in room ${roomId}`);
+        }
 
-      // Eğer oda boşaldıysa, odayı temizle
-      if (room.users.size === 0) {
-        rooms.delete(roomId);
-        console.log(`Room ${roomId} deleted (empty)`);
-      } else {
-        socket.to(roomId).emit('user-left', {
-          userId,
-          username,
-          users: Array.from(room.users.values())
-        });
+        // Eğer oda boşaldıysa, odayı temizle
+        if (room.users.size === 0) {
+          rooms.delete(roomId);
+          console.log(`Room ${roomId} deleted (empty)`);
+        } else {
+          // Diğer kullanıcılara bildir (socket.to yerine io.to kullan)
+          io.to(roomId).emit('user-left', {
+            userId,
+            username: username || 'Unknown',
+            users: Array.from(room.users.values())
+          });
+          console.log(`User ${username || userId} left room ${roomId}`);
+        }
       }
     }
 
-    console.log('User disconnected:', socket.id);
+    console.log('User disconnected:', socket.id, 'Room:', roomId || 'none');
   });
 
   // Ping/Pong
