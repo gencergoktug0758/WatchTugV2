@@ -102,10 +102,13 @@ io.on('connection', (socket) => {
     if (room.streamActive && room.hostId) {
       const hostUser = Array.from(room.users.values()).find(u => u.userId === room.hostId);
       if (hostUser) {
-        io.to(hostUser.socketId).emit('new-viewer-joined', {
-          viewerUserId: userId,
-          viewerUsername: username
-        });
+        // Small delay to ensure user is fully joined
+        setTimeout(() => {
+          io.to(hostUser.socketId).emit('new-viewer-joined', {
+            viewerUserId: userId,
+            viewerUsername: username
+          });
+        }, 100);
       }
     }
 

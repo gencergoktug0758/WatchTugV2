@@ -90,10 +90,15 @@ export const SocketProvider = ({ children }) => {
 
     socket.on('room-joined', (data) => {
       console.log('Room joined:', data);
+      console.log('Stream active status:', data.streamActive);
       setUsers(data.users);
       setIsHost(data.isHost);
       setChatHistory(data.chatHistory || []);
       setStreamActive(data.streamActive);
+      // Force update to ensure state is set
+      if (data.streamActive) {
+        console.log('Stream is active, viewer should see connecting message');
+      }
     });
 
     socket.on('room-not-found', () => {

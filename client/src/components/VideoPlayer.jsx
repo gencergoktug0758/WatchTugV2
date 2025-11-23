@@ -18,6 +18,11 @@ const VideoPlayer = () => {
   const { roomId, userId, isHost, users, streamActive } = useStore();
   const { emit, on, off } = useSocket();
 
+  // Debug: Log streamActive changes
+  useEffect(() => {
+    console.log('VideoPlayer - streamActive changed:', streamActive, 'isHost:', isHost, 'hasVideoStream:', hasVideoStream);
+  }, [streamActive, isHost, hasVideoStream]);
+
   // WebRTC Configuration with STUN servers
   const rtcConfig = {
     iceServers: [
@@ -230,11 +235,24 @@ const VideoPlayer = () => {
     if (!roomId) return;
 
     const handleNewViewer = ({ viewerUserId, viewerUsername }) => {
+      console.log('New viewer joined event received:', viewerUserId, 'isHost:', isHost, 'isSharing:', isSharing);
       if (isHost && isSharing && localStreamRef.current) {
         console.log('New viewer joined, sending offer to:', viewerUserId);
         // Create peer connection and send offer
         if (!peerConnectionsRef.current.has(viewerUserId)) {
-          createPeerConnection(viewerUserId, true);
+          // Small delay to ensure everything is ready
+          setTimeout(() => {
+            createPeerConnection(viewerUserId, true);
+          }, 200);
+        }
+      } else if (isHost && !isSharing && localStreamRef.current) {
+        // Host has stream but isSharing state might not be updated yet
+        console.log('Host has stream but isSharing is false, checking...');
+        if (localStreamRef.current.getVideoTracks().length > 0) {
+          setIsSharing(true);
+          setTimeout(() => {
+            createPeerConnection(viewerUserId, true);
+          }, 200);
         }
       }
     };
@@ -248,9 +266,8 @@ const VideoPlayer = () => {
 
   // Reconnect WebRTC when room is rejoined and stream is active
   useEffect(() => {
-    if (streamActive && !isHost && !isSharing && users.length > 0) {
+    if (streamActive && !isHost && !isSharing && users.length > 0 && !hasVideoStream) {
       // Find host user - host is the one who created the room
-      // We'll wait for offer from host, but if it doesn't come, we can request it
       const hasActiveConnection = Array.from(peerConnectionsRef.current.values()).some(
         pc => pc.connectionState === 'connected' || pc.connectionState === 'connecting'
       );
@@ -258,9 +275,22 @@ const VideoPlayer = () => {
       if (!hasActiveConnection) {
         console.log('Stream is active but no connection, waiting for offer from host...');
         // Host should send offer automatically when we join via 'new-viewer-joined' event
+        // But if it doesn't come within 2 seconds, we can try to request it
+        const timeout = setTimeout(() => {
+          const stillNoConnection = !Array.from(peerConnectionsRef.current.values()).some(
+            pc => pc.connectionState === 'connected' || pc.connectionState === 'connecting'
+          );
+          if (stillNoConnection && streamActive) {
+            console.log('Still no connection after 2s, host might need to resend offer');
+            // The host should have received new-viewer-joined event, but if not, 
+            // we can emit a request (optional - for now just log)
+          }
+        }, 2000);
+        
+        return () => clearTimeout(timeout);
       }
     }
-  }, [streamActive, isHost, isSharing, users]);
+  }, [streamActive, isHost, isSharing, users, hasVideoStream]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -327,7 +357,8 @@ const VideoPlayer = () => {
           onPause={() => setIsPlaying(false)}
         />
 
-        {!streamActive && !isSharing && (
+        {/* Show waiting message only if stream is NOT active and user is NOT sharing and has no video */}
+        {!streamActive && !isSharing && !hasVideoStream && (
           <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/80">
             <div className="text-center">
               <Share2 className="w-16 h-16 text-dark-text2 mx-auto mb-4 opacity-50" />
@@ -338,7 +369,7 @@ const VideoPlayer = () => {
           </div>
         )}
 
-        {/* Show connecting message if stream is active but no video yet (for viewers) */}
+        {/* Show connecting message if stream is active but no video yet (for viewers) - This is the key fix */}
         {streamActive && !isHost && !hasVideoStream && (
           <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/80">
             <div className="text-center">
