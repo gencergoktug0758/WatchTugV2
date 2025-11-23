@@ -521,13 +521,13 @@ async function createProducer(stream) {
         // Video producer
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
-            // ZORBA MODU: Simulcast TAMAMEN KAPALI - Tek ve güçlü yayın (4 Mbps, 30 FPS)
+            // Mükemmel Optimizasyon: Discord 1080p standardı (3.5 Mbps, 30 FPS)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 4000000, // 4 Mbps (Discord Nitro kalitesi)
-                    maxFramerate: 30, // 30 FPS
-                    scaleResolutionDownBy: 1.0, // Asla küçültme
+                    maxBitrate: 3500000, // 3.5 Mbps (Discord 1080p standardı)
+                    maxFramerate: 30,    // 30 FPS (Film/Dizi için en akıcı değer)
+                    scaleResolutionDownBy: 1.0, // Orijinal boyut
                     networkPriority: 'high' // Paket önceliğini artır
                 }],
                 codecOptions: {
@@ -535,7 +535,7 @@ async function createProducer(stream) {
                 }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, ZORBA MODU: 4 Mbps, 30 FPS, Discord Nitro kalitesi):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, Discord Standardı: 3.5 Mbps, 30 FPS, Mükemmel Optimizasyon):', videoProducer.id);
         }
         
         // Audio producer
@@ -968,14 +968,14 @@ async function initializeCall() {
         await createDevice(routerRtpCapabilities);
         
         // Ekran paylaşımı erişimi iste
-        // ZORBA MODU: 1920x1080 ideal çözünürlük (min kullanma, sadece ideal kullan)
+        // Mükemmel Optimizasyon: Discord 1080p standardı (1920x1080 ideal/max, 30 FPS)
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 cursor: 'always',
                 displaySurface: 'monitor',
-                width: { ideal: 1920 }, // Ideal 1920 (Zorba Modu)
-                height: { ideal: 1080 }, // Ideal 1080 (Zorba Modu)
-                frameRate: 30, // 30 FPS
+                width: { ideal: 1920, max: 1920 }, // Ideal ve max 1920 (Discord standardı)
+                height: { ideal: 1080, max: 1080 }, // Ideal ve max 1080 (Discord standardı)
+                frameRate: 30, // 30 FPS (Film/Dizi için en akıcı değer)
                 resizeMode: 'none' // Çözünürlük garantisi: Tarayıcı kafasına göre küçültmesin
             },
             audio: {
@@ -991,13 +991,14 @@ async function initializeCall() {
         const videoTrack = screenStream.getVideoTracks()[0];
         if (videoTrack) {
             const constraints = {
-                width: { max: 1920 }, // Sadece Max sınır koy
-                height: { max: 1080 }, // Sadece Max sınır koy
-                frameRate: { ideal: 30, max: 30 }
+                width: { ideal: 1920, max: 1920 }, // Ideal ve max 1920 (Discord standardı)
+                height: { ideal: 1080, max: 1080 }, // Ideal ve max 1080 (Discord standardı)
+                frameRate: { ideal: 30, max: 30 } // 30 FPS (Film/Dizi için en akıcı değer)
             };
             
             await videoTrack.applyConstraints(constraints);
             videoTrack.contentHint = 'motion'; // Film modu: Chrome'a bu bir hareketli içerik (film) olduğunu söyle
+            debug('Video track optimize edildi (1920x1080, 30 FPS, Motion hint aktif)');
         }
         
         // Producer Transport oluştur
