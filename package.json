@@ -21,6 +21,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "livekit-server-sdk": "^2.14.2",
     "mediasoup": "^3.11.11",
     "mediasoup-client": "^3.18.1",
     "socket.io": "^4.7.2",

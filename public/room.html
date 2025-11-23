@@ -828,25 +828,24 @@
         <div class="notification-content"></div>
     </div>
     
-    <!-- Socket.io ve Script -->
-    <script src="/socket.io/socket.io.js"></script>
-    <!-- Mediasoup Client - Local Build (Webpack) -->
-    <script src="js/mediasoup-client.js"></script>
+    <!-- LiveKit Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <!-- Socket.io (Gerekirse kullanılabilir) -->
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
     <script>
-        // Mediasoup client yükleme kontrolü
+        // LiveKit client yükleme kontrolü
         (function() {
-            function checkMediasoupClient() {
-                // Webpack build window.mediasoupClient olarak export eder
-                if (typeof window.mediasoupClient !== 'undefined') {
-                    console.log('[Mediasoup] ✅ Client yüklendi (Local Build)');
-                    console.log('[Mediasoup] Device class:', window.mediasoupClient.Device);
+            function checkLiveKitClient() {
+                // LiveKit CDN window.LiveKitClient olarak export eder
+                if (typeof LiveKitClient !== 'undefined') {
+                    console.log('[LiveKit] ✅ Client yüklendi (CDN)');
                     
                     // Yükleme tamamlandığını belirt
-                    window.mediasoupClientLoaded = true;
+                    window.LiveKitClientLoaded = true;
                     
                     // Event dispatch
-                    window.dispatchEvent(new CustomEvent('mediasoup-client-loaded', { 
-                        detail: { client: window.mediasoupClient } 
+                    window.dispatchEvent(new CustomEvent('livekit-client-loaded', { 
+                        detail: { client: LiveKitClient } 
                     }));
                     
                     return true;
@@ -859,15 +858,15 @@
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
-                        if (!checkMediasoupClient()) {
-                            console.error('[Mediasoup] ❌ Client yüklenemedi! Dosya kontrol ediliyor...');
+                        if (!checkLiveKitClient()) {
+                            console.error('[LiveKit] ❌ Client yüklenemedi! CDN kontrol ediliyor...');
                         }
                     }, 500);
                 });
             } else {
                 setTimeout(() => {
-                    if (!checkMediasoupClient()) {
-                        console.error('[Mediasoup] ❌ Client yüklenemedi! Dosya kontrol ediliyor...');
+                    if (!checkLiveKitClient()) {
+                        console.error('[LiveKit] ❌ Client yüklenemedi! CDN kontrol ediliyor...');
                     }
                 }, 500);
             }
