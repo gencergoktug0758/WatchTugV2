@@ -521,15 +521,13 @@ async function createProducer(stream) {
         // Video producer
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
-            // Simulcast DEVRE DIŞI: L1T1 modu (Tek katman, paket kaybı sorununu önle)
-            // Bitrate "Taş Gibi" Sabit: 1 Mbps ve 24 FPS (Dalgalanma yok, jitter önleme)
+            // ZORBA MODU: Simulcast TAMAMEN KAPALI - Tek ve güçlü yayın (4 Mbps, 30 FPS)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 1000000, // Tam 1 Mbps (Dalgalanma istemiyoruz)
-                    maxFramerate: 24, // 24 FPS (Sinematik ve stabil)
-                    scaleResolutionDownBy: 1.0, // Orijinal boyut
-                    scalabilityMode: 'L1T1', // Tek katman
+                    maxBitrate: 4000000, // 4 Mbps (Discord Nitro kalitesi)
+                    maxFramerate: 30, // 30 FPS
+                    scaleResolutionDownBy: 1.0, // Asla küçültme
                     networkPriority: 'high' // Paket önceliğini artır
                 }],
                 codecOptions: {
@@ -537,7 +535,7 @@ async function createProducer(stream) {
                 }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, L1T1 Modu: 1 Mbps, 24 FPS, Taş Gibi Sabit):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, ZORBA MODU: 4 Mbps, 30 FPS, Discord Nitro kalitesi):', videoProducer.id);
         }
         
         // Audio producer
@@ -589,14 +587,16 @@ async function createConsumer(producerId) {
                     
                     consumers.set(consumer.id, consumer);
                     
-                    // ZORLA: En yüksek kalite katmanını iste (144p sorununu önlemek için)
+                    // ZORLA: En yüksek kalite katmanını iste (144p sorununu önlemek için - ZORBA MODU)
                     if (consumer.kind === 'video') {
                         try {
                             await consumer.setPreferredLayers({ spatialLayer: 2, temporalLayer: 2 });
-                            debug('Consumer en yüksek kalite katmanına zorlandı (spatialLayer: 2, temporalLayer: 2)');
+                            // En üst katmanı zorla (sunucunun darboğaz yapmaması için)
+                            await consumer.setMaxSpatialLayer(2);
+                            debug('Consumer en yüksek kalite katmanına zorlandı (spatialLayer: 2, temporalLayer: 2, maxSpatialLayer: 2)');
                         } catch (layerError) {
                             // Eğer spatialLayer 2 yoksa, sistem otomatik en yükseği verecektir
-                            debug('setPreferredLayers hatası (sistem otomatik en yüksek katmanı seçecek):', layerError);
+                            debug('setPreferredLayers/setMaxSpatialLayer hatası (sistem otomatik en yüksek katmanı seçecek):', layerError);
                         }
                     }
                     
@@ -968,14 +968,14 @@ async function initializeCall() {
         await createDevice(routerRtpCapabilities);
         
         // Ekran paylaşımı erişimi iste
-        // NOT: getDisplayMedia'da "min" constraint desteklenmez, sadece "max" kullanılabilir
+        // ZORBA MODU: 1920x1080 ideal çözünürlük (min kullanma, sadece ideal kullan)
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 cursor: 'always',
                 displaySurface: 'monitor',
-                width: { max: 1920 }, // Sadece Max sınır koy
-                height: { max: 1080 }, // Sadece Max sınır koy
-                frameRate: 30, // FPS limiti
+                width: { ideal: 1920 }, // Ideal 1920 (Zorba Modu)
+                height: { ideal: 1080 }, // Ideal 1080 (Zorba Modu)
+                frameRate: 30, // 30 FPS
                 resizeMode: 'none' // Çözünürlük garantisi: Tarayıcı kafasına göre küçültmesin
             },
             audio: {
@@ -1024,13 +1024,18 @@ async function initializeCall() {
         
         debug('Ekran paylaşımı başlatıldı (Mediasoup), diğer kullanıcılara bildiriliyor...');
         
-        // Kendi ekranımızı göster (YANKI ÖNLEME: Yerel videoyu sustur)
+        // Kendi ekranımızı göster (YANKI ÖNLEME: Yerel videoyu sustur - ZORBA MODU)
         screenDisplay.srcObject = screenStream;
         screenDisplay.buffered = bufferSize;
         screenDisplay.muted = true; // Yayıncı kendi paylaştığı filmin sesini tarayıcıdan duymasın
         screenDisplay.volume = 0; // Ses seviyesini 0 yap (yankı önleme)
+        
+        // NOT: Audio track'i disabled yapmıyoruz çünkü producer'a gönderilen track aynı track
+        // Muted ve volume 0 yeterli - yankı önlenir, producer track'i aktif kalır
+        debug('Yerel video muted ve volume 0 yapıldı (yankı önleme - producer track aktif kalır)');
+        
         screenDisplay.play()
-            .then(() => debug('Yerel video oynatma başarılı (muted - yankı önleme)'))
+            .then(() => debug('Yerel video oynatma başarılı (muted + volume 0 - yankı önleme)'))
             .catch(error => debug('Yerel video oynatma hatası:', error));
         
         // Stream durduğunda

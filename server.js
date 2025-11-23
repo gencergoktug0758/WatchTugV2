@@ -319,7 +319,7 @@ async function createWebRtcTransport(socket, roomId, direction = 'send') {
             enableUdp: true,
             enableTcp: true,
             preferUdp: true,
-            initialAvailableOutgoingBitrate: 1000000
+            initialAvailableOutgoingBitrate: 5000000 // 5 Mbps ile başla (Zorba Modu - korkak davranma)
         });
         
         transport.on('dtlsstatechange', (dtlsState) => {
