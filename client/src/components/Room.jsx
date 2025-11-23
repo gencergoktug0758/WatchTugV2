@@ -11,10 +11,11 @@ import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2 } from 'lucide-react
 const Room = () => {
   const { roomId: urlRoomId } = useParams();
   const navigate = useNavigate();
-  const { roomId, username, userId, ping, connectionStatus, resetRoom, clearAll, users, setRoomId, setUsername, setUserId } = useStore();
+  const { roomId, username, userId, ping, connectionStatus, resetRoom, clearAll, users, setRoomId } = useStore();
   const { isConnected, emit, on, off } = useSocket();
   const [toasts, setToasts] = useState([]);
   const [isJoining, setIsJoining] = useState(true);
+  const [hasEmittedJoin, setHasEmittedJoin] = useState(false);
 
   const addToast = (message, type = 'info', duration = 3000) => {
     const id = Date.now().toString();
@@ -25,36 +26,66 @@ const Room = () => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  // Initialize room connection from URL
+  // Initialize room connection from URL - only run once when URL changes
   useEffect(() => {
     if (!urlRoomId) {
       navigate('/');
       return;
     }
 
+    // Wait for socket connection
+    if (!isConnected) {
+      console.log('Waiting for socket connection...');
+      return;
+    }
+
     // If we have username and userId, join the room
-    if (username && userId && isConnected) {
-      setRoomId(urlRoomId);
-      emit('join-room', { roomId: urlRoomId, username, userId });
-    } else if (!username || !userId) {
+    if (username && userId) {
+      // Only set roomId if it's different (prevent infinite loop)
+      if (roomId !== urlRoomId) {
+        setRoomId(urlRoomId);
+      }
+      
+      // Only emit once per URL change
+      if (!hasEmittedJoin && username && userId) {
+        setHasEmittedJoin(true);
+        console.log('Joining room:', urlRoomId, 'as', username, 'userId:', userId);
+        // Small delay to ensure event listeners are set up
+        const timeoutId = setTimeout(() => {
+          emit('join-room', { roomId: urlRoomId, username, userId });
+        }, 100);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    } else {
       // No user data, redirect to login
+      console.log('No user data, redirecting to login');
       navigate('/');
     }
-  }, [urlRoomId, username, userId, isConnected, navigate, setRoomId, emit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlRoomId, isConnected, username, userId]); // Depend on URL, connection, and user data
 
-  // Handle room joined/created events
+  // Reset hasEmittedJoin when URL changes
+  useEffect(() => {
+    setHasEmittedJoin(false);
+  }, [urlRoomId]);
+
+  // Handle room joined/created events - ALWAYS listen, not just when connected
   useEffect(() => {
     const handleRoomJoined = (data) => {
       console.log('Room joined event received:', data);
       setIsJoining(false);
+      setHasEmittedJoin(false); // Reset so we can rejoin if needed
     };
 
     const handleRoomCreated = (data) => {
       console.log('Room created event received:', data);
       setIsJoining(false);
+      setHasEmittedJoin(false); // Reset so we can rejoin if needed
     };
 
     const handleRoomNotFound = () => {
+      console.log('Room not found event received');
       setIsJoining(false);
       addToast('Oda bulunamadı! Ana sayfaya yönlendiriliyorsunuz...', 'error', 3000);
       setTimeout(() => {
@@ -64,18 +95,17 @@ const Room = () => {
       }, 2000);
     };
 
-    if (isConnected) {
-      on('room-joined', handleRoomJoined);
-      on('room-created', handleRoomCreated);
-      on('room-not-found', handleRoomNotFound);
-    }
+    // Always listen to events, not just when connected
+    on('room-joined', handleRoomJoined);
+    on('room-created', handleRoomCreated);
+    on('room-not-found', handleRoomNotFound);
 
     return () => {
       off('room-joined', handleRoomJoined);
       off('room-created', handleRoomCreated);
       off('room-not-found', handleRoomNotFound);
     };
-  }, [isConnected, on, off, navigate, resetRoom, clearAll, addToast]);
+  }, [on, off, navigate, resetRoom, clearAll, addToast]);
 
   // Handle room joined - hide loading after connection and users loaded
   useEffect(() => {
@@ -143,6 +173,24 @@ const Room = () => {
     navigator.clipboard.writeText(urlRoomId || roomId);
     addToast('Oda ID kopyalandı!', 'info', 2000);
   };
+
+  // Timeout for joining - if no response in 5 seconds, show error
+  useEffect(() => {
+    if (isJoining && isConnected) {
+      const timeout = setTimeout(() => {
+        if (isJoining) {
+          console.error('Room join timeout');
+          setIsJoining(false);
+          addToast('Odaya bağlanılamadı. Lütfen tekrar deneyin.', 'error', 4000);
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
+        }
+      }, 5000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isJoining, isConnected, addToast, navigate]);
 
   // Loading overlay
   if (isJoining || !isConnected) {

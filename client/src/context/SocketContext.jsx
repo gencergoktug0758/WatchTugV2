@@ -16,9 +16,6 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const {
-    username,
-    userId,
-    roomId,
     setConnected,
     setConnectionStatus,
     setPing,
@@ -48,15 +45,8 @@ export const SocketProvider = ({ children }) => {
       setConnected(true);
       setConnectionStatus('connected');
 
-      // Eğer daha önce bir odaya bağlıysak, yeniden bağlan
-      const currentRoomId = useStore.getState().roomId;
-      const currentUserId = useStore.getState().userId;
-      const currentUsername = useStore.getState().username;
-      
-      if (currentRoomId && currentUserId && currentUsername) {
-        console.log('Reconnecting to room:', currentRoomId);
-        socket.emit('join-room', { roomId: currentRoomId, username: currentUsername, userId: currentUserId });
-      }
+      // Reconnection logic removed - let Room component handle it via URL
+      // This prevents auto-redirect when user wants to go to login page
 
       // Ping başlat
       pingInterval = setInterval(() => {

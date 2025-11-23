@@ -2,17 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
-import { Video, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Video, Sparkles } from 'lucide-react';
 import { ToastContainer } from './Toast';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [roomIdInput, setRoomIdInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
   const navigate = useNavigate();
   const { setUsername: setStoreUsername, setUserId, setRoomId, username: storedUsername, resetRoom } = useStore();
-  const { emit, on, off, isConnected } = useSocket();
+  const { isConnected } = useSocket();
 
   // Load saved username on mount
   useEffect(() => {
@@ -20,6 +19,12 @@ const Login = () => {
       setUsername(storedUsername);
     }
   }, [storedUsername]);
+  
+  // Clear room data when component mounts (only once)
+  useEffect(() => {
+    resetRoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Sadece mount'ta çalışsın
 
   const addToast = (message, type = 'error', duration = 4000) => {
     const id = Date.now().toString();
@@ -30,47 +35,7 @@ const Login = () => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  // Handle socket events
-  useEffect(() => {
-    const handleRoomCreated = (data) => {
-      setIsLoading(false);
-      navigate(`/room/${data.roomId}`);
-    };
-
-    const handleRoomJoined = (data) => {
-      setIsLoading(false);
-      navigate(`/room/${data.roomId}`);
-    };
-
-    const handleRoomNotFound = () => {
-      setIsLoading(false);
-      resetRoom();
-      addToast('Oda bulunamadı! Lütfen oda ID\'sini kontrol edin veya yeni bir oda oluşturun.', 'error');
-    };
-
-    const handleRoomAlreadyExists = ({ roomId }) => {
-      // Room exists, try to join instead
-      const userId = generateUserId();
-      setStoreUsername(username.trim());
-      setUserId(userId);
-      setRoomId(roomId);
-      emit('join-room', { roomId, username: username.trim(), userId });
-    };
-
-    if (isConnected) {
-      on('room-created', handleRoomCreated);
-      on('room-joined', handleRoomJoined);
-      on('room-not-found', handleRoomNotFound);
-      on('room-already-exists', handleRoomAlreadyExists);
-    }
-
-    return () => {
-      off('room-created', handleRoomCreated);
-      off('room-joined', handleRoomJoined);
-      off('room-not-found', handleRoomNotFound);
-      off('room-already-exists', handleRoomAlreadyExists);
-    };
-  }, [isConnected, on, off, navigate, username, setStoreUsername, setUserId, setRoomId, resetRoom, emit]);
+  // No need for socket event handlers here - Room component will handle them
 
   const generateUserId = () => {
     return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -91,18 +56,21 @@ const Login = () => {
       return;
     }
 
-    setIsLoading(true);
+    if (!isConnected) {
+      addToast('Sunucuya bağlanılıyor, lütfen bekleyin...', 'error');
+      return;
+    }
+
     const userId = generateUserId();
     const sanitizedRoomId = sanitizeRoomId(roomIdInput);
 
-    // Save username
+    // Save username and user data
     setStoreUsername(username.trim());
     setUserId(userId);
     setRoomId(sanitizedRoomId);
 
-    // Try to join first, if room doesn't exist, server will handle creation
-    // We'll use a smart approach: try join, if fails, create
-    emit('join-room', { roomId: sanitizedRoomId, username: username.trim(), userId });
+    // Navigate to room - Room component will handle joining
+    navigate(`/room/${sanitizedRoomId}`);
   };
 
   return (
@@ -145,7 +113,7 @@ const Login = () => {
                 placeholder="Adınızı girin"
                 className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent transition-all duration-200 hover:border-dark-accent/50"
                 autoFocus
-                disabled={isLoading}
+disabled={false}
               />
             </div>
 
@@ -167,7 +135,6 @@ const Login = () => {
                 }}
                 placeholder="Oda ID girin (varsa katılır, yoksa oluşturur)"
                 className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent transition-all duration-200 hover:border-dark-accent/50"
-                disabled={isLoading}
                 maxLength={30}
               />
               <p className="text-xs text-dark-text2 mt-2">
@@ -178,20 +145,11 @@ const Login = () => {
             <div className="pt-2">
               <button
                 onClick={handleSubmit}
-                disabled={!username.trim() || !roomIdInput.trim() || isLoading}
+                disabled={!username.trim() || !roomIdInput.trim() || !isConnected}
                 className="w-full px-6 py-3 bg-gradient-to-r from-dark-accent to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Bağlanıyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Video className="w-5 h-5" />
-                    Odaya Gir / Oluştur
-                  </>
-                )}
+                <Video className="w-5 h-5" />
+                Odaya Gir / Oluştur
               </button>
             </div>
           </div>
