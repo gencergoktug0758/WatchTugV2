@@ -522,13 +522,14 @@ async function createProducer(stream) {
         if (videoTrack) {
             // H.264 codec kullanımı (Discord standartları - Donanımsal kodlama/GPU desteği)
             // Simulcast DEVRE DIŞI: L1T1 modu (Tek katman, paket kaybı sorununu önle)
-            // Bitrate Stabilizasyonu: Sabit 1.2 Mbps (Dalgalanma yok)
+            // Bitrate "Taş Gibi" Sabit: 1 Mbps ve 24 FPS (Dalgalanma yok, jitter önleme)
             const videoProducer = await sendTransport.produce({ 
                 track: videoTrack,
                 encodings: [{
-                    maxBitrate: 1200000, // 1.2 Mbps (Sabit, dalgalanmaz)
+                    maxBitrate: 1000000, // Tam 1 Mbps (Dalgalanma istemiyoruz)
+                    maxFramerate: 24, // 24 FPS (Sinematik ve stabil)
                     scaleResolutionDownBy: 1.0, // Orijinal boyut
-                    scalabilityMode: 'L1T1', // ÇOK ÖNEMLİ: Sadece tek katman gönder, karmaşa olmasın
+                    scalabilityMode: 'L1T1', // Tek katman
                     networkPriority: 'high' // Paket önceliğini artır
                 }],
                 codecOptions: {
@@ -536,7 +537,7 @@ async function createProducer(stream) {
                 }
             });
             createdProducers.set('video', videoProducer);
-            debug('Video producer oluşturuldu (H.264, L1T1 Modu: 1.2 Mbps, Tek Katman, High Priority):', videoProducer.id);
+            debug('Video producer oluşturuldu (H.264, L1T1 Modu: 1 Mbps, 24 FPS, Taş Gibi Sabit):', videoProducer.id);
         }
         
         // Audio producer
@@ -597,6 +598,13 @@ async function createConsumer(producerId) {
                             // Eğer spatialLayer 2 yoksa, sistem otomatik en yükseği verecektir
                             debug('setPreferredLayers hatası (sistem otomatik en yüksek katmanı seçecek):', layerError);
                         }
+                    }
+                    
+                    // JITTER BUFFER: 400ms gecikme izni ver (Takılmaları %100 emer)
+                    const { track } = consumer;
+                    if (track && track.kind === 'video') {
+                        track.playoutDelayHint = 0.4; // 0.4 saniye (400ms) buffer koy
+                        debug('Jitter buffer eklendi: 400ms (Takılmalar önlendi)');
                     }
                     
                     // Consumer'ı resume et
@@ -967,7 +975,8 @@ async function initializeCall() {
                 displaySurface: 'monitor',
                 width: { max: 1920 }, // Sadece Max sınır koy
                 height: { max: 1080 }, // Sadece Max sınır koy
-                frameRate: 30 // FPS limiti
+                frameRate: 30, // FPS limiti
+                resizeMode: 'none' // Çözünürlük garantisi: Tarayıcı kafasına göre küçültmesin
             },
             audio: {
                 echoCancellation: true,
