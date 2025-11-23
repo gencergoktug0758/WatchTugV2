@@ -1,23 +1,24 @@
 {
-  "name": "watchtug-livekit",
+  "name": "watchtug-p2p",
   "version": "3.0.0",
-  "description": "LiveKit tabanli modern ekran paylasim uygulamasi",
+  "description": "P2P tabanli modern ekran paylasim uygulamasi",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "keywords": [
-    "livekit",
     "webrtc",
-    "screen-sharing"
+    "p2p",
+    "screen-sharing",
+    "peer-to-peer"
   ],
   "author": "WTUG Team",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "livekit-server-sdk": "^2.9.4",
+    "socket.io": "^4.7.2",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

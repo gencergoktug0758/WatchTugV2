@@ -556,11 +556,21 @@ function handleCreateRoom() {
     
     debug('Oda oluşturma isteği gönderiliyor. OdaID:', roomId);
     
+    // Reconnection için localStorage'a kaydet
+    const userId = localStorage.getItem('watchtug_userId') || `user_${Date.now()}`;
+    localStorage.setItem('watchtug_userId', userId);
+    localStorage.setItem('watchtug_lastRoomId', roomId);
+    
     // Show loading screen
     showLoadingScreen(true);
     
-    // Create room
-    socket.emit('create-room', roomId);
+    // Redirect to room page (room.js'de join-room emit edilecek)
+    setTimeout(() => {
+        hideLoadingScreen();
+        const redirectUrl = `/room.html?room=${encodeURIComponent(roomId)}`;
+        debug('Yönlendiriliyor:', redirectUrl);
+        window.location.href = redirectUrl;
+    }, 1500);
 }
 
 // Join room handler
@@ -593,48 +603,52 @@ function handleJoinRoom() {
     const roomId = roomValidation.sanitizedValue;
     debug('Odaya katılma isteği gönderiliyor. OdaID:', roomId);
     
+    // Reconnection için localStorage'a kaydet
+    const userId = localStorage.getItem('watchtug_userId') || `user_${Date.now()}`;
+    localStorage.setItem('watchtug_userId', userId);
+    localStorage.setItem('watchtug_lastRoomId', roomId);
+    
     // Show loading screen
     showLoadingScreen(false);
     
-    // Join room
-    socket.emit('join-room', roomId);
+    // Redirect to room page (room.js'de join-room emit edilecek)
+    const redirectUrl = `/room.html?room=${encodeURIComponent(roomId)}`;
+    debug('Yönlendiriliyor:', redirectUrl);
+    window.location.href = redirectUrl;
 }
 
-// Socket event handlers
-socket.on('username-set', (username) => {
-    debug('Kullanıcı adı sunucuda ayarlandı:', username);
-});
-
-socket.on('room-created', (data) => {
-    debug('Oda oluşturuldu:', data.roomId);
+// Socket event handlers - P2P için güncellendi
+socket.on('connect', () => {
+    debug('Sunucu bağlantısı kuruldu');
     
-    // Hide loading screen after a minimum duration
-    setTimeout(() => {
-        hideLoadingScreen();
-        // Redirect to room page
-        const redirectUrl = `/room.html?room=${encodeURIComponent(data.roomId)}`;
-        debug('Yönlendiriliyor:', redirectUrl);
-        window.location.href = redirectUrl;
-    }, 1500); // Minimum 1.5 saniye göster
-});
-
-socket.on('room-joined', (data) => {
-    debug('Odaya katılındı:', data.roomId);
+    // Reconnection: Eğer localStorage'da oda bilgisi varsa otomatik bağlan
+    const savedRoomId = localStorage.getItem('watchtug_lastRoomId');
+    const savedUserId = localStorage.getItem('watchtug_userId');
     
-    // Hide loading screen after a minimum duration
-    setTimeout(() => {
-        hideLoadingScreen();
-        // Redirect to room page
-        const redirectUrl = `/room.html?room=${encodeURIComponent(data.roomId)}`;
-        debug('Yönlendiriliyor:', redirectUrl);
-        window.location.href = redirectUrl;
-    }, 1500); // Minimum 1.5 saniye göster
+    if (savedRoomId && savedUserId) {
+        debug('Reconnection: Son odaya otomatik bağlanılıyor:', savedRoomId);
+        // Odaya otomatik katıl (room.js'de handle edilecek)
+    }
 });
 
-socket.on('room-error', (data) => {
-    debug('Oda hatası:', data.message);
-    hideLoadingScreen();
-    showToast(data.message);
+socket.on('disconnect', () => {
+    debug('Sunucu bağlantısı kesildi');
+    // Reconnection için localStorage'ı koru (30 saniye grace period)
+    showToast('Bağlantı kesildi. Yeniden bağlanılıyor...');
+});
+
+socket.on('reconnect', () => {
+    debug('Sunucuya yeniden bağlanıldı');
+    showToast('Yeniden bağlanıldı!');
+    
+    // Reconnection: Son odaya otomatik bağlan
+    const savedRoomId = localStorage.getItem('watchtug_lastRoomId');
+    const savedUserId = localStorage.getItem('watchtug_userId');
+    
+    if (savedRoomId && savedUserId) {
+        debug('Reconnection: Son odaya otomatik bağlanılıyor:', savedRoomId);
+        window.location.href = `/room.html?room=${encodeURIComponent(savedRoomId)}`;
+    }
 });
 
 // Initialize on DOM load
