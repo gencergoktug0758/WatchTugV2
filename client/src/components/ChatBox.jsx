@@ -32,21 +32,25 @@ const ChatBox = ({ isTheaterMode = false }) => {
   };
 
   return (
-    <div className={`flex flex-col h-full ${
+    <div className={`flex flex-col ${isTheaterMode ? 'h-full' : 'h-full'} ${
       isTheaterMode 
-        ? 'bg-dark-surface border-l border-dark-surface2 rounded-none' 
-        : 'bg-dark-surface/90 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-lg'
+        ? 'bg-gradient-to-b from-dark-surface/95 to-dark-surface/90 backdrop-blur-xl border-l border-red-500/20 rounded-none' 
+        : 'bg-gradient-to-br from-dark-surface/95 to-dark-surface/90 backdrop-blur-xl rounded-2xl border border-red-500/20 shadow-2xl'
     }`}>
-      <div className="flex items-center gap-2 p-4 border-b border-dark-surface2">
-        <MessageSquare className="w-5 h-5 text-dark-accent" />
-        <h3 className="text-dark-text font-semibold">Sohbet</h3>
+      <div className="flex items-center gap-3 p-5 border-b border-red-500/20">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/30">
+          <MessageSquare className="w-5 h-5 text-white" />
+        </div>
+        <h3 className="text-white font-bold text-lg">Sohbet</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {chatHistory.length === 0 ? (
-          <div className="text-center text-dark-text2 py-8 animate-fade-in">
-            <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>Henüz mesaj yok. İlk mesajı sen gönder!</p>
+          <div className="text-center text-dark-text2 py-12 animate-fade-in">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-600/10 flex items-center justify-center border border-red-500/20">
+              <MessageSquare className="w-8 h-8 text-red-500/50" />
+            </div>
+            <p className="text-white/60 text-base">Henüz mesaj yok. İlk mesajı sen gönder!</p>
           </div>
         ) : (
           chatHistory.map((msg, index) => (
@@ -58,15 +62,15 @@ const ChatBox = ({ isTheaterMode = false }) => {
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-3 py-2 transition-all duration-200 transform hover:scale-105 ${
+                className={`max-w-[80%] rounded-2xl px-4 py-3 transition-all duration-200 transform hover:scale-[1.02] shadow-lg ${
                   msg.userId === useStore.getState().userId
-                    ? 'bg-gradient-to-r from-dark-accent to-red-600 text-white shadow-lg'
-                    : 'bg-dark-surface2 text-dark-text hover:bg-dark-surface2/80'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white border border-red-500/30'
+                    : 'bg-dark-surface2/80 backdrop-blur-sm text-white border border-dark-surface2/50 hover:border-red-500/30'
                 }`}
               >
-                <div className="text-xs opacity-75 mb-1 font-medium">{msg.username}</div>
-                <div className="text-sm">{msg.message}</div>
-                <div className="text-xs opacity-50 mt-1">{formatTime(msg.timestamp)}</div>
+                <div className="text-xs opacity-90 mb-1.5 font-semibold">{msg.username}</div>
+                <div className="text-sm leading-relaxed">{msg.message}</div>
+                <div className="text-xs opacity-60 mt-1.5">{formatTime(msg.timestamp)}</div>
               </div>
             </div>
           ))
@@ -74,8 +78,8 @@ const ChatBox = ({ isTheaterMode = false }) => {
         <div ref={chatEndRef} />
       </div>
 
-      <div className="p-4 border-t border-dark-surface2">
-        <div className="flex gap-2">
+      <div className="p-5 border-t border-red-500/20">
+        <div className="flex gap-3">
           <input
             type="text"
             value={message}
@@ -87,12 +91,12 @@ const ChatBox = ({ isTheaterMode = false }) => {
               }
             }}
             placeholder="Mesaj yazın..."
-            className="flex-1 px-4 py-2 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent transition-all duration-200 hover:border-dark-accent/50"
+            className="flex-1 px-4 py-3 bg-dark-surface2/80 backdrop-blur-sm border border-dark-surface2/50 hover:border-red-500/30 focus:border-red-500/50 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all duration-200"
           />
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="px-4 py-2 bg-gradient-to-r from-dark-accent to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+            className="px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transform hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl hover:shadow-red-500/30"
           >
             <Send className="w-5 h-5" />
           </button>

@@ -14,6 +14,8 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [hasVideoStream, setHasVideoStream] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef(null);
 
   const { roomId, userId, isHost, users, streamActive } = useStore();
   const { emit, on, off } = useSocket();
@@ -22,6 +24,25 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
   useEffect(() => {
     console.log('VideoPlayer - streamActive changed:', streamActive, 'isHost:', isHost, 'hasVideoStream:', hasVideoStream);
   }, [streamActive, isHost, hasVideoStream]);
+
+  // Mobilde kontrolleri göster/gizle
+  const handleShowControls = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // WebRTC Configuration with STUN servers
   const rtcConfig = {
@@ -349,26 +370,35 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
     <div className={`overflow-hidden flex flex-col h-full ${
       isTheaterMode 
         ? 'bg-black rounded-none border-none' 
-        : 'bg-dark-surface rounded-lg border border-dark-surface2'
+        : 'bg-gradient-to-br from-dark-surface/95 to-dark-surface/90 backdrop-blur-xl rounded-2xl border border-red-500/20 shadow-2xl'
     }`}>
-      <div className="relative flex-1 bg-black group">
+      <div 
+        className="relative flex-1 bg-black group flex items-center justify-center min-h-0"
+        onTouchStart={handleShowControls}
+        onMouseMove={handleShowControls}
+        onMouseLeave={() => setShowControls(false)}
+      >
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className={`w-full h-full ${
-            isTheaterMode ? 'object-cover' : 'object-contain'
-          }`}
+          className="w-full h-full object-contain"
+          style={{
+            objectPosition: 'center',
+            display: 'block'
+          }}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />
 
         {/* Show waiting message only if stream is NOT active and user is NOT sharing and has no video */}
         {!streamActive && !isSharing && !hasVideoStream && (
-          <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/80">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-dark-surface/90 to-dark-surface/80 backdrop-blur-sm">
             <div className="text-center">
-              <Share2 className="w-16 h-16 text-dark-text2 mx-auto mb-4 opacity-50" />
-              <p className="text-dark-text2 text-lg">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-red-600/10 flex items-center justify-center border border-red-500/20">
+                <Share2 className="w-10 h-10 text-red-500/60" />
+              </div>
+              <p className="text-white text-xl font-medium">
                 {isHost ? 'Ekran paylaşımını başlat' : 'Yayın bekleniyor...'}
               </p>
             </div>
@@ -377,10 +407,12 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
 
         {/* Show connecting message if stream is active but no video yet (for viewers) - This is the key fix */}
         {streamActive && !isHost && !hasVideoStream && (
-          <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/80">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-dark-surface/90 to-dark-surface/80 backdrop-blur-sm">
             <div className="text-center">
-              <Share2 className="w-16 h-16 text-dark-text2 mx-auto mb-4 opacity-50 animate-pulse" />
-              <p className="text-dark-text2 text-lg">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-red-600/10 flex items-center justify-center border border-red-500/20 animate-pulse">
+                <Share2 className="w-10 h-10 text-red-500/60" />
+              </div>
+              <p className="text-white text-xl font-medium">
                 Yayın bağlanıyor...
               </p>
             </div>
@@ -389,15 +421,17 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
 
         {/* Show message if host reconnected but stream was active */}
         {streamActive && isHost && !isSharing && !localStreamRef.current && (
-          <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/80">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-dark-surface/90 to-dark-surface/80 backdrop-blur-sm">
             <div className="text-center">
-              <Share2 className="w-16 h-16 text-dark-text2 mx-auto mb-4 opacity-50" />
-              <p className="text-dark-text2 text-lg mb-4">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-red-600/10 flex items-center justify-center border border-red-500/20">
+                <Share2 className="w-10 h-10 text-red-500/60" />
+              </div>
+              <p className="text-white text-xl font-medium mb-6">
                 Yayın durduruldu. Yeniden başlatmak için:
               </p>
               <button
                 onClick={startSharing}
-                className="px-6 py-3 bg-dark-accent hover:bg-red-600 text-white font-semibold rounded-lg transition"
+                className="px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl hover:shadow-red-500/30"
               >
                 Ekran Paylaşımını Yeniden Başlat
               </button>
@@ -406,27 +440,29 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
         )}
 
         {/* Controls overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="flex items-center gap-4">
+        <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3 sm:p-5 transition-opacity duration-300 ${
+          showControls ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={togglePlayPause}
-              className="p-2 bg-dark-surface/80 rounded-lg hover:bg-dark-surface transition"
+              className="p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border border-white/20"
             >
               {isPlaying ? (
-                <Pause className="w-5 h-5 text-white" />
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               ) : (
-                <Play className="w-5 h-5 text-white" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               )}
             </button>
 
             <button
               onClick={toggleMute}
-              className="p-2 bg-dark-surface/80 rounded-lg hover:bg-dark-surface transition"
+              className="p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border border-white/20"
             >
               {isMuted ? (
-                <VolumeX className="w-5 h-5 text-white" />
+                <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               ) : (
-                <Volume2 className="w-5 h-5 text-white" />
+                <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               )}
             </button>
 
@@ -437,32 +473,35 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
               step="0.1"
               value={volume}
               onChange={handleVolumeChange}
-              className="flex-1 h-2 bg-dark-surface2 rounded-lg appearance-none cursor-pointer"
+              className="flex-1 min-w-[80px] h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-red-600"
+              style={{
+                background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+              }}
             />
 
             {/* Theater Mode Toggle Button */}
             {onTheaterModeToggle && (
               <button
                 onClick={onTheaterModeToggle}
-                className={`p-2 rounded-lg transition ${
+                className={`p-2.5 sm:p-3 rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border ${
                   isTheaterMode
-                    ? 'bg-dark-accent/80 hover:bg-dark-accent text-white'
-                    : 'bg-dark-surface/80 hover:bg-dark-surface text-white'
+                    ? 'bg-red-600/80 hover:bg-red-600 text-white border-red-500/50'
+                    : 'bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-white/20'
                 }`}
                 title={isTheaterMode ? 'Tiyatro Modunu Kapat' : 'Tiyatro Modunu Aç'}
               >
-                <Theater className="w-5 h-5" />
+                <Theater className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             )}
 
             <button
               onClick={toggleFullscreen}
-              className="p-2 bg-dark-surface/80 rounded-lg hover:bg-dark-surface transition"
+              className="p-2.5 sm:p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border border-white/20 flex-shrink-0"
             >
               {isFullscreen ? (
-                <Minimize className="w-5 h-5 text-white" />
+                <Minimize className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               ) : (
-                <Maximize className="w-5 h-5 text-white" />
+                <Maximize className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               )}
             </button>
           </div>
@@ -470,25 +509,27 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
 
         {/* Connection status */}
         <div className="absolute top-4 left-4">
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-            connectionStatus === 'connected' ? 'bg-green-500/80' :
-            connectionStatus === 'connecting' ? 'bg-yellow-500/80' :
-            'bg-red-500/80'
-          } text-white`}>
-            {connectionStatus === 'connected' ? 'Bağlı' :
-             connectionStatus === 'connecting' ? 'Bağlanıyor...' :
-             'Bağlantı Yok'}
+          <div className={`px-4 py-2 rounded-xl text-xs font-semibold backdrop-blur-md border ${
+            connectionStatus === 'connected' 
+              ? 'bg-green-500/20 border-green-500/50 text-green-400' :
+            connectionStatus === 'connecting' 
+              ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' :
+              'bg-red-500/20 border-red-500/50 text-red-400'
+          } shadow-lg`}>
+            {connectionStatus === 'connected' ? '✓ Bağlı' :
+             connectionStatus === 'connecting' ? '⟳ Bağlanıyor...' :
+             '✕ Bağlantı Yok'}
           </div>
         </div>
       </div>
 
       {/* Share button (Host only) - Gizle tiyatro modunda */}
       {isHost && !isTheaterMode && (
-        <div className="p-4 border-t border-dark-surface2">
+        <div className="p-5 border-t border-red-500/20">
           {!isSharing ? (
             <button
               onClick={startSharing}
-              className="w-full px-4 py-3 bg-dark-accent hover:bg-red-600 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+              className="w-full px-6 py-3.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-100 shadow-lg hover:shadow-xl hover:shadow-red-500/30"
             >
               <Share2 className="w-5 h-5" />
               Ekran Paylaşımını Başlat
@@ -496,7 +537,7 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
           ) : (
             <button
               onClick={stopSharing}
-              className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+              className="w-full px-6 py-3.5 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-100 shadow-lg hover:shadow-xl hover:shadow-red-500/30"
             >
               <Square className="w-5 h-5" />
               Paylaşımı Durdur

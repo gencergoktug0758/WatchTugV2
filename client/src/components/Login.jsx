@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
-import { Video, Sparkles } from 'lucide-react';
 import { ToastContainer } from './Toast';
 import Footer from './Footer';
 
@@ -78,25 +77,61 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-dark-bg via-dark-surface to-dark-bg flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-dark-accent/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-red-600/15 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-700/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4 animate-slide-down">
-            <div className="relative">
-              <Video className="w-12 h-12 text-dark-accent animate-bounce-slow" />
-              <Sparkles className="w-6 h-6 text-yellow-400 absolute -top-1 -right-1 animate-spin-slow" />
+          <div className="flex items-center justify-center gap-4 mb-4 animate-slide-down">
+            {/* Modern Logo SVG */}
+            <div className="relative logo-glow">
+              <svg 
+                width="64" 
+                height="64" 
+                viewBox="0 0 64 64" 
+                className="transition-transform duration-300 hover:scale-110"
+              >
+                <defs>
+                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e50914" stopOpacity="1" />
+                    <stop offset="100%" stopColor="#f40612" stopOpacity="1" />
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                
+                {/* Play Button Circle */}
+                <circle 
+                  cx="32" 
+                  cy="32" 
+                  r="28" 
+                  fill="url(#logoGradient)" 
+                  filter="url(#glow)"
+                />
+                
+                {/* Play Triangle */}
+                <path 
+                  d="M 24 20 L 24 44 L 44 32 Z" 
+                  fill="white" 
+                  opacity="0.95"
+                />
+              </svg>
             </div>
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-dark-accent to-red-400 bg-clip-text text-transparent">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 via-red-600 to-red-700 bg-clip-text text-transparent tracking-tight">
               WatchTug
             </h1>
           </div>
           <p className="text-dark-text2 text-lg animate-fade-in-delay">Birlikte film izle, ekran paylaş</p>
         </div>
 
-        <div className="bg-dark-surface/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-dark-surface2 animate-slide-up">
+        <div className="bg-dark-surface/95 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-red-500/20 animate-slide-up hover:border-red-500/30 transition-all duration-300">
           <div className="space-y-6">
             <div className="animate-fade-in">
               <label className="block text-dark-text2 text-sm font-medium mb-2">
@@ -112,7 +147,7 @@ const Login = () => {
                   }
                 }}
                 placeholder="Adınızı girin"
-                className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent transition-all duration-200 hover:border-dark-accent/50"
+                className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-all duration-200 hover:border-red-500/30"
                 autoFocus
 disabled={false}
               />
@@ -135,7 +170,7 @@ disabled={false}
                   }
                 }}
                 placeholder="Oda ID girin (varsa katılır, yoksa oluşturur)"
-                className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent transition-all duration-200 hover:border-dark-accent/50"
+                className="w-full px-4 py-3 bg-dark-surface2 border border-dark-surface2 rounded-lg text-dark-text placeholder-dark-text2 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 transition-all duration-200 hover:border-red-500/30"
                 maxLength={30}
               />
               <p className="text-xs text-dark-text2 mt-2">
@@ -147,9 +182,11 @@ disabled={false}
               <button
                 onClick={handleSubmit}
                 disabled={!username.trim() || !roomIdInput.trim() || !isConnected}
-                className="w-full px-6 py-3 bg-gradient-to-r from-dark-accent to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+                className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl hover:shadow-red-500/50"
               >
-                <Video className="w-5 h-5" />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                </svg>
                 Odaya Gir / Oluştur
               </button>
             </div>

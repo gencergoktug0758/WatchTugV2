@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useSocket } from '../context/SocketContext';
@@ -7,7 +7,7 @@ import ChatBox from './ChatBox';
 import UserList from './UserList';
 import { ToastContainer } from './Toast';
 import Footer from './Footer';
-import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2, Theater, X } from 'lucide-react';
+import { LogOut, Copy, Wifi, WifiOff, Loader2, CheckCircle2, Theater, X, MessageSquare } from 'lucide-react';
 
 const Room = () => {
   const { roomId: urlRoomId } = useParams();
@@ -18,6 +18,8 @@ const Room = () => {
   const [isJoining, setIsJoining] = useState(true);
   const [hasEmittedJoin, setHasEmittedJoin] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const addToast = (message, type = 'info', duration = 3000) => {
     const id = Date.now().toString();
@@ -163,6 +165,25 @@ const Room = () => {
     };
   }, [userId, on, off, addToast]);
 
+  // Track unread messages for mobile chat button
+  const { chatHistory } = useStore();
+  const lastReadCountRef = useRef(0);
+  
+  useEffect(() => {
+    if (isTheaterMode && !isMobileChatOpen) {
+      // Chat kapalıyken yeni mesajlar geldiğinde unread count hesapla
+      const newMessages = chatHistory.length - lastReadCountRef.current;
+      if (newMessages > 0) {
+        setUnreadCount(prev => prev + newMessages);
+      }
+      lastReadCountRef.current = chatHistory.length;
+    } else if (isMobileChatOpen) {
+      // Chat açıldığında unread count'u sıfırla ve lastReadCount'u güncelle
+      setUnreadCount(0);
+      lastReadCountRef.current = chatHistory.length;
+    }
+  }, [chatHistory.length, isTheaterMode, isMobileChatOpen]);
+
   const handleLeaveRoom = () => {
     if (confirm('Odadan ayrılmak istediğinize emin misiniz?')) {
       resetRoom();
@@ -197,18 +218,22 @@ const Room = () => {
   // Loading overlay
   if (isJoining || !isConnected) {
     return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <div className="relative mb-6">
-            <Loader2 className="w-16 h-16 text-dark-accent mx-auto animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-dark-bg via-dark-surface to-dark-bg flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-red-600/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        <div className="text-center animate-fade-in relative z-10">
+          <div className="relative mb-8 inline-block">
+            <div className="w-20 h-20 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-12 h-12 border-4 border-dark-accent/20 border-t-dark-accent rounded-full animate-spin"></div>
+              <div className="w-12 h-12 bg-red-600/20 rounded-full animate-pulse"></div>
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-dark-text mb-2 animate-pulse">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent mb-3 animate-pulse">
             {!isConnected ? 'Bağlanıyor...' : 'Odaya katılıyor...'}
           </h2>
-          <p className="text-dark-text2">
+          <p className="text-dark-text2 text-lg">
             {urlRoomId && `Oda: ${urlRoomId}`}
           </p>
         </div>
@@ -220,53 +245,91 @@ const Room = () => {
 
   return (
     <div className={`min-h-screen bg-dark-bg animate-fade-in ${isTheaterMode ? 'h-screen overflow-hidden p-0' : 'p-4'}`}>
+      {/* Mobile Theater Mode Controls - Sadece mobilde ve tiyatro modunda */}
+      {isTheaterMode && (
+        <div className="lg:hidden fixed top-4 right-4 z-50 flex gap-2">
+          {/* Chat Toggle Button with Notification */}
+          <button
+            onClick={() => setIsMobileChatOpen(!isMobileChatOpen)}
+            className="relative p-3 bg-gradient-to-br from-red-600/90 to-red-700/90 backdrop-blur-md rounded-xl text-white shadow-2xl border border-red-500/50 transition-all duration-200 transform hover:scale-110 active:scale-95"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {unreadCount > 0 && !isMobileChatOpen && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {/* Theater Mode Toggle Button */}
+          <button
+            onClick={() => setIsTheaterMode(false)}
+            className="p-3 bg-gradient-to-br from-red-600/90 to-red-700/90 backdrop-blur-md rounded-xl text-white shadow-2xl border border-red-500/50 transition-all duration-200 transform hover:scale-110 active:scale-95"
+            title="Tiyatro Modunu Kapat"
+          >
+            <Theater className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Header - Gizle tiyatro modunda */}
       {!isTheaterMode && (
-        <div className="max-w-7xl mx-auto mb-4">
-          <div className="bg-dark-surface/90 backdrop-blur-sm rounded-xl p-4 border border-dark-surface2 flex flex-wrap items-center justify-between gap-4 shadow-lg animate-slide-down">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-dark-text font-bold text-lg flex items-center gap-2">
-                  <span className="text-dark-accent">Oda:</span>
-                  <span className="font-mono">{displayRoomId}</span>
-                </h2>
-                <p className="text-dark-text2 text-sm flex items-center gap-2 mt-1">
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                  {username}
-                </p>
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="bg-gradient-to-r from-dark-surface/95 via-dark-surface/90 to-dark-surface/95 backdrop-blur-xl rounded-2xl p-5 border border-red-500/20 flex flex-wrap items-center justify-between gap-4 shadow-2xl shadow-red-500/10 animate-slide-down hover:border-red-500/30 transition-all duration-300">
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/30">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-dark-text font-bold text-lg flex items-center gap-2">
+                    <span className="text-red-500">Oda:</span>
+                    <span className="font-mono text-white">{displayRoomId}</span>
+                  </h2>
+                  <p className="text-dark-text2 text-sm flex items-center gap-2 mt-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                    <span className="text-white/80">{username}</span>
+                  </p>
+                </div>
               </div>
               <button
                 onClick={copyRoomId}
-                className="px-3 py-2 bg-dark-surface2 hover:bg-dark-accent/20 rounded-lg transition-all duration-200 flex items-center gap-2 text-dark-text text-sm transform hover:scale-105 active:scale-95 border border-dark-surface2 hover:border-dark-accent/50"
+                className="px-4 py-2.5 bg-dark-surface2/80 hover:bg-dark-surface2 border border-dark-surface2 hover:border-red-500/50 rounded-xl transition-all duration-200 flex items-center gap-2 text-dark-text text-sm font-medium transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
                 title="Oda ID'sini Kopyala"
               >
                 <Copy className="w-4 h-4" />
+                <span>Kopyala</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-dark-surface2 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all duration-200 ${
+                isConnected 
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                  : 'bg-red-500/10 border-red-500/30 text-red-400'
+              }`}>
                 {isConnected ? (
                   <>
-                    <Wifi className="w-5 h-5 text-green-500 animate-pulse" />
-                    <span className="text-dark-text text-sm font-medium">
+                    <Wifi className="w-5 h-5 animate-pulse" />
+                    <span className="text-sm font-medium">
                       {ping > 0 ? `${ping}ms` : 'Bağlı'}
                     </span>
                   </>
                 ) : (
                   <>
-                    <WifiOff className="w-5 h-5 text-red-500" />
-                    <span className="text-dark-text text-sm text-red-500">Bağlantı Yok</span>
+                    <WifiOff className="w-5 h-5" />
+                    <span className="text-sm font-medium">Bağlantı Yok</span>
                   </>
                 )}
               </div>
 
               <button
                 onClick={handleLeaveRoom}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+                className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl transition-all duration-200 flex items-center gap-2 font-medium transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl hover:shadow-red-500/30"
               >
                 <LogOut className="w-4 h-4" />
-                Çıkış
+                <span>Çıkış</span>
               </button>
             </div>
           </div>
@@ -281,13 +344,21 @@ const Room = () => {
       }`}>
         <div className={`grid transition-all duration-300 ${
           isTheaterMode 
-            ? 'grid-cols-1 lg:grid-cols-[1fr_400px] h-screen gap-0' 
+            ? `lg:grid-cols-[1fr_400px] h-screen gap-0 ${
+                isMobileChatOpen 
+                  ? 'grid-cols-[1fr_280px]' // Mobilde chat açıkken: video solda, chat sağda
+                  : 'grid-cols-1' // Mobilde chat kapalıyken: video tam ekran ortada
+              }`
             : 'grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-180px)]'
         }`}>
-          {/* Video Player - Sol tarafta tam ekran gibi (İLK SIRADA) */}
+          {/* Video Player */}
           <div className={`${
             isTheaterMode 
-              ? 'h-screen w-full' 
+              ? `h-screen ${
+                  isMobileChatOpen 
+                    ? 'w-full' // Chat açıkken video solda
+                    : 'w-full' // Chat kapalıyken video tam ekran
+                }`
               : 'min-h-[400px] lg:min-h-0 lg:col-span-2'
           } animate-slide-up`}>
             <VideoPlayer 
@@ -311,9 +382,9 @@ const Room = () => {
             </div>
           )}
 
-          {/* Theater Mode - Sadece Chat sağ tarafta (İKİNCİ SIRADA) */}
+          {/* Theater Mode - Desktop Chat (Sadece lg+) */}
           {isTheaterMode && (
-            <div className="hidden lg:flex h-screen bg-dark-surface border-l border-dark-surface2 animate-slide-in-right">
+            <div className="hidden lg:flex h-screen bg-gradient-to-b from-dark-surface/95 to-dark-surface/90 backdrop-blur-xl border-l border-red-500/20 animate-slide-in-right shadow-2xl">
               <div className="w-full h-full flex flex-col">
                 {/* Chat Box - Tam yükseklik */}
                 <div className="flex-1 h-full overflow-hidden">
@@ -323,26 +394,26 @@ const Room = () => {
             </div>
           )}
 
-          {/* Theater Mode - Mobile Chat (Floating) */}
-          {isTheaterMode && (
-            <div className="lg:hidden fixed bottom-4 right-4 z-30 w-[calc(100vw-2rem)] max-w-sm animate-slide-up">
-              <div className="bg-dark-surface/95 backdrop-blur-sm rounded-xl border border-dark-surface2 shadow-2xl flex flex-col max-h-[50vh]">
-                {/* Header with close button */}
-                <div className="flex items-center justify-between p-3 border-b border-dark-surface2">
+          {/* Theater Mode - Mobile Chat (Kick style: Video solda, Chat sağda) */}
+          {isTheaterMode && isMobileChatOpen && (
+            <div className="lg:hidden h-screen bg-gradient-to-b from-dark-surface/95 to-dark-surface/90 backdrop-blur-xl border-l border-red-500/20 shadow-2xl animate-slide-in-right">
+              <div className="w-full h-full flex flex-col">
+                {/* Header with close button - Sadece chat'i kapatır */}
+                <div className="flex items-center justify-between p-3 border-b border-red-500/20">
                   <div className="flex items-center gap-2">
-                    <Theater className="w-4 h-4 text-dark-text2" />
-                    <span className="text-dark-text text-sm font-semibold">Chat</span>
+                    <MessageSquare className="w-4 h-4 text-red-500" />
+                    <span className="text-white text-sm font-semibold">Chat</span>
                   </div>
                   <button
-                    onClick={() => setIsTheaterMode(false)}
-                    className="p-1.5 hover:bg-dark-surface2 rounded-lg transition"
+                    onClick={() => setIsMobileChatOpen(false)}
+                    className="p-1.5 hover:bg-dark-surface2 rounded-lg transition-all duration-200 hover:scale-110"
                   >
-                    <X className="w-4 h-4 text-dark-text2" />
+                    <X className="w-4 h-4 text-white" />
                   </button>
                 </div>
 
-                {/* Chat Box */}
-                <div className="h-[300px] overflow-hidden">
+                {/* Chat Box - Scrollable */}
+                <div className="flex-1 overflow-hidden min-h-0">
                   <ChatBox isTheaterMode={true} />
                 </div>
               </div>
