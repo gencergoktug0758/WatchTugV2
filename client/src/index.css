@@ -19,6 +19,36 @@ body {
   overflow-x: hidden;
 }
 
+/* Mobile fullscreen support */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* iOS Safari için */
+    height: -webkit-fill-available;
+  }
+}
+
+html {
+  height: 100%;
+  height: -webkit-fill-available;
+}
+
+/* Fullscreen mode için */
+:fullscreen {
+  background-color: #000;
+}
+
+:-webkit-full-screen {
+  background-color: #000;
+}
+
+:-moz-full-screen {
+  background-color: #000;
+}
+
+:-ms-fullscreen {
+  background-color: #000;
+}
+
 #root {
   min-height: 100vh;
 }

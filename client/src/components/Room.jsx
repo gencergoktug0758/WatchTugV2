@@ -21,6 +21,52 @@ const Room = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Mobilde tiyatro moduna geçildiğinde otomatik fullscreen
+  useEffect(() => {
+    const isMobile = window.innerWidth < 1024;
+    
+    if (isTheaterMode && isMobile) {
+      // Mobilde tiyatro moduna geçildiğinde fullscreen'e geç
+      const enterFullscreen = async () => {
+        try {
+          const element = document.documentElement;
+          if (element.requestFullscreen) {
+            await element.requestFullscreen();
+          } else if (element.webkitRequestFullscreen) {
+            await element.webkitRequestFullscreen();
+          } else if (element.mozRequestFullScreen) {
+            await element.mozRequestFullScreen();
+          } else if (element.msRequestFullscreen) {
+            await element.msRequestFullscreen();
+          }
+        } catch (error) {
+          console.log('Fullscreen hatası:', error);
+        }
+      };
+      
+      enterFullscreen();
+    } else if (!isTheaterMode && isMobile) {
+      // Tiyatro modundan çıkıldığında fullscreen'den çık
+      const exitFullscreen = () => {
+        try {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+          } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+          }
+        } catch (error) {
+          console.log('Exit fullscreen hatası:', error);
+        }
+      };
+      
+      exitFullscreen();
+    }
+  }, [isTheaterMode]);
+
   const addToast = (message, type = 'info', duration = 3000) => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, message, type, duration }]);
@@ -244,7 +290,7 @@ const Room = () => {
   const displayRoomId = urlRoomId || roomId;
 
   return (
-    <div className={`min-h-screen bg-dark-bg animate-fade-in ${isTheaterMode ? 'h-screen overflow-hidden p-0' : 'p-4'}`}>
+    <div className={`min-h-screen bg-dark-bg animate-fade-in ${isTheaterMode ? 'h-screen h-[100dvh] overflow-hidden p-0 fixed inset-0 w-full' : 'p-4'}`}>
       {/* Mobile Theater Mode Controls - Sadece mobilde ve tiyatro modunda */}
       {isTheaterMode && (
         <div className="lg:hidden fixed top-4 right-4 z-50 flex gap-2">
