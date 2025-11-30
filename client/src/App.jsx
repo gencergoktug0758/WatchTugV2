@@ -7,7 +7,7 @@ function App() {
   return (
     <BrowserRouter>
       <SocketProvider>
-        <div className="min-h-screen bg-dark-bg">
+        <div className="min-h-screen">
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/room/:roomId" element={<Room />} />

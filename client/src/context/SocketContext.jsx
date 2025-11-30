@@ -23,17 +23,20 @@ export const SocketProvider = ({ children }) => {
     addChatMessage,
     setChatHistory,
     setStreamActive,
-    setIsHost
+    setIsHost,
+    setIsModerator,
+    setModerators,
+    setHasPassword,
+    setPopularRooms,
+    setGlobalStats,
+    updateMessageReactions
   } = useStore();
 
   useEffect(() => {
-    // Eğer site "localhost"ta çalışıyorsa lokal sunucuya,
-    // Yoksa (yani watchtug.live'daysa) gerçek sunucuya bağlansın.
     const SOCKET_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? (import.meta.env.VITE_SERVER_URL || 'http://localhost:3000')
       : (import.meta.env.VITE_SERVER_URL || 'https://watchtug.live');
 
-    // Socket bağlantısını oluştur
     const socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -52,18 +55,17 @@ export const SocketProvider = ({ children }) => {
       setConnected(true);
       setConnectionStatus('connected');
 
-      // Reconnection logic removed - let Room component handle it via URL
-      // This prevents auto-redirect when user wants to go to login page
-
-      // Ping başlat
+      // Ping
       pingInterval = setInterval(() => {
         const start = Date.now();
         socket.emit('ping');
         socket.once('pong', () => {
-          const latency = Date.now() - start;
-          setPing(latency);
+          setPing(Date.now() - start);
         });
       }, 5000);
+
+      // Popüler odaları getir
+      socket.emit('get-popular-rooms');
     });
 
     socket.on('disconnect', () => {
@@ -78,30 +80,55 @@ export const SocketProvider = ({ children }) => {
       setConnectionStatus('disconnected');
     });
 
+    // Popüler odalar
+    socket.on('popular-rooms', (data) => {
+      setPopularRooms(data.rooms);
+      setGlobalStats(data.stats);
+    });
+
+    // Stats güncellendi (real-time)
+    socket.on('stats-update', (stats) => {
+      setGlobalStats(stats);
+    });
+
+    // Oda oluşturuldu
     socket.on('room-created', (data) => {
       console.log('Room created:', data);
       setUsers(data.users);
       setIsHost(data.isHost);
+      setIsModerator(data.isModerator);
       setChatHistory(data.chatHistory || []);
+      setHasPassword(data.hasPassword);
+      setModerators(data.moderators || []);
     });
 
+    // Odaya katıldı
     socket.on('room-joined', (data) => {
       console.log('Room joined:', data);
-      console.log('Stream active status:', data.streamActive);
       setUsers(data.users);
       setIsHost(data.isHost);
+      setIsModerator(data.isModerator);
       setChatHistory(data.chatHistory || []);
       setStreamActive(data.streamActive);
-      // Force update to ensure state is set
-      if (data.streamActive) {
-        console.log('Stream is active, viewer should see connecting message');
-      }
+      setHasPassword(data.hasPassword);
+      setModerators(data.moderators || []);
     });
 
     socket.on('room-not-found', () => {
-      alert('Oda bulunamadı!');
+      console.log('Room not found');
     });
 
+    // Şifre gerekli
+    socket.on('password-required', (data) => {
+      console.log('Password required for room:', data.roomId);
+    });
+
+    // Şifre sonucu
+    socket.on('password-result', (data) => {
+      console.log('Password result:', data);
+    });
+
+    // Kullanıcı katıldı/ayrıldı
     socket.on('user-joined', (data) => {
       console.log('User joined:', data);
       setUsers(data.users);
@@ -112,10 +139,24 @@ export const SocketProvider = ({ children }) => {
       setUsers(data.users);
     });
 
+    // Chat mesajı
     socket.on('chat-message', (message) => {
       addChatMessage(message);
     });
 
+    // Mesaj tepkisi güncellendi
+    socket.on('reaction-updated', ({ messageId, reactions }) => {
+      updateMessageReactions(messageId, reactions);
+    });
+
+    // Moderatörler güncellendi
+    socket.on('moderators-updated', ({ moderators }) => {
+      setModerators(moderators);
+      const currentUserId = useStore.getState().userId;
+      setIsModerator(moderators.includes(currentUserId));
+    });
+
+    // Stream durumu
     socket.on('stream-started', () => {
       setStreamActive(true);
     });
@@ -124,26 +165,27 @@ export const SocketProvider = ({ children }) => {
       setStreamActive(false);
     });
 
+    // Host değişti
     socket.on('host-changed', (data) => {
       const currentUserId = useStore.getState().userId;
       setIsHost(data.newHostId === currentUserId);
+      if (data.moderators) {
+        setModerators(data.moderators);
+        setIsModerator(data.moderators.includes(currentUserId));
+      }
     });
 
     return () => {
-      if (pingInterval) {
-        clearInterval(pingInterval);
-      }
+      if (pingInterval) clearInterval(pingInterval);
       socket.disconnect();
     };
   }, []);
 
   const emit = (event, data) => {
     if (socketRef.current) {
-      // Bağlantı kurulana kadar bekle
       if (socketRef.current.connected) {
         socketRef.current.emit(event, data);
       } else {
-        // Bağlantı kurulunca gönder
         socketRef.current.once('connect', () => {
           socketRef.current.emit(event, data);
         });
@@ -163,10 +205,23 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
+  // Popüler odaları yenile
+  const refreshPopularRooms = () => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('get-popular-rooms');
+    }
+  };
+
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, isConnected, emit, on, off }}>
+    <SocketContext.Provider value={{ 
+      socket: socketRef.current, 
+      isConnected, 
+      emit, 
+      on, 
+      off,
+      refreshPopularRooms 
+    }}>
       {children}
     </SocketContext.Provider>
   );
 };
-

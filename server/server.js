@@ -7,7 +7,6 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    // Hem localhost'a hem de canlı siteye izin ver
     origin: process.env.CLIENT_URL 
       ? process.env.CLIENT_URL.split(',')
       : [
@@ -35,58 +34,253 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Oda yönetimi
-const rooms = new Map(); // roomId -> { hostId, users: Set, streamActive: boolean }
+// Oda yönetimi - Genişletilmiş yapı
+const rooms = new Map(); 
+// roomId -> { 
+//   hostId, 
+//   users: Map, 
+//   streamActive: boolean, 
+//   chatHistory: [],
+//   password: string | null,
+//   moderators: Set,
+//   reactions: Map (messageId -> { emoji: count, users: [] })
+// }
+
+// Global stats
+let totalRoomsCreated = 0;
+let totalUsersJoined = 0;
+
+// Tüm client'lara güncel stats ve popüler odaları broadcast et
+function broadcastStats() {
+  let totalActiveUsers = 0;
+  const activeRoomsList = [];
+  
+  for (const [roomId, room] of rooms.entries()) {
+    if (room.users.size > 0) {
+      totalActiveUsers += room.users.size;
+      activeRoomsList.push([roomId, room]);
+    }
+  }
+  
+  const stats = {
+    totalRooms: activeRoomsList.length,
+    totalActiveUsers
+  };
+  
+  // Stats'ı broadcast et
+  io.emit('stats-update', stats);
+  
+  // Popüler odaları da broadcast et (şifresiz ve aktif olanlar)
+  const popularRooms = activeRoomsList
+    .filter(([_, room]) => !room.password)
+    .map(([roomId, room]) => ({
+      roomId,
+      userCount: room.users.size,
+      hasStream: room.streamActive,
+      hostName: Array.from(room.users.values()).find(u => u.userId === room.hostId)?.username || 'Unknown'
+    }))
+    .sort((a, b) => b.userCount - a.userCount)
+    .slice(0, 10);
+  
+  io.emit('popular-rooms', { rooms: popularRooms, stats });
+  
+  console.log(`[BROADCAST] Active rooms: ${activeRoomsList.length}, Active users: ${totalActiveUsers}`);
+}
+
+// Periyodik temizlik - boş odaları ve hayalet kullanıcıları temizle
+setInterval(() => {
+  let cleanedRooms = 0;
+  let cleanedUsers = 0;
+  
+  for (const [roomId, room] of rooms.entries()) {
+    // Boş odaları sil
+    if (room.users.size === 0) {
+      rooms.delete(roomId);
+      cleanedRooms++;
+      continue;
+    }
+    
+    // Geçersiz socketId'li kullanıcıları temizle
+    for (const [oderId, user] of room.users.entries()) {
+      const socket = io.sockets.sockets.get(user.socketId);
+      if (!socket || !socket.connected) {
+        room.users.delete(oderId);
+        room.moderators.delete(oderId);
+        cleanedUsers++;
+      }
+    }
+    
+    // Temizlik sonrası oda boşaldıysa sil
+    if (room.users.size === 0) {
+      rooms.delete(roomId);
+      cleanedRooms++;
+    }
+  }
+  
+  if (cleanedRooms > 0 || cleanedUsers > 0) {
+    console.log(`[CLEANUP] Removed ${cleanedRooms} empty rooms, ${cleanedUsers} ghost users`);
+  }
+}, 30000); // Her 30 saniyede bir (debug için uzatıldı)
+
+// REST API - Popüler odalar
+app.get('/api/popular-rooms', (req, res) => {
+  let totalActiveUsers = 0;
+  const activeRoomsList = [];
+  
+  for (const [roomId, room] of rooms.entries()) {
+    if (room.users.size > 0) {
+      totalActiveUsers += room.users.size;
+      activeRoomsList.push([roomId, room]);
+    }
+  }
+  
+  const popularRooms = activeRoomsList
+    .filter(([_, room]) => !room.password)
+    .map(([roomId, room]) => ({
+      roomId,
+      userCount: room.users.size,
+      hasStream: room.streamActive,
+      hostName: Array.from(room.users.values()).find(u => u.userId === room.hostId)?.username || 'Unknown'
+    }))
+    .sort((a, b) => b.userCount - a.userCount)
+    .slice(0, 10);
+
+  res.json({ 
+    rooms: popularRooms,
+    stats: {
+      totalRooms: activeRoomsList.length,
+      totalActiveUsers: totalActiveUsers,
+      totalRoomsCreated,
+      totalUsersJoined
+    }
+  });
+});
+
+// REST API - Oda bilgisi (şifre var mı kontrol)
+app.get('/api/room/:roomId', (req, res) => {
+  const { roomId } = req.params;
+  const room = rooms.get(roomId);
+  
+  if (!room) {
+    return res.json({ exists: false });
+  }
+
+  res.json({
+    exists: true,
+    hasPassword: !!room.password,
+    userCount: room.users.size,
+    hasStream: room.streamActive
+  });
+});
+
+// REST API - Odadan ayrılma (sendBeacon için)
+app.post('/api/leave', express.json(), (req, res) => {
+  const { roomId, userId, username } = req.body;
+  
+  if (!roomId || !userId) {
+    return res.status(400).json({ error: 'Missing roomId or userId' });
+  }
+  
+  const room = rooms.get(roomId);
+  if (!room) {
+    return res.json({ success: true, message: 'Room not found' });
+  }
+  
+  if (room.users.has(userId)) {
+    room.users.delete(userId);
+    room.moderators.delete(userId);
+    
+    // Host ayrıldıysa yeni host seç
+    if (room.hostId === userId && room.users.size > 0) {
+      const newHost = Array.from(room.users.values())[0];
+      room.hostId = newHost.userId;
+      room.moderators.add(newHost.userId);
+      io.to(roomId).emit('host-changed', { 
+        newHostId: newHost.userId,
+        moderators: Array.from(room.moderators)
+      });
+    }
+    
+    // Oda boşaldıysa sil
+    if (room.users.size === 0) {
+      rooms.delete(roomId);
+      console.log(`[API] Room ${roomId} deleted (empty)`);
+    } else {
+      io.to(roomId).emit('user-left', {
+        userId,
+        username: username || 'Unknown',
+        users: Array.from(room.users.values())
+      });
+    }
+    
+    console.log(`[API] User ${username} left room ${roomId}`);
+    broadcastStats();
+  }
+  
+  res.json({ success: true });
+});
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Oda oluştur
-  socket.on('create-room', ({ roomId, username, userId }) => {
-    // Check if room already exists and has active users
+  // Popüler odaları getir (socket üzerinden de)
+  socket.on('get-popular-rooms', () => {
+    // Önce tüm odaları ve kullanıcıları say
+    let totalActiveUsers = 0;
+    const activeRoomsList = [];
+    
+    for (const [roomId, room] of rooms.entries()) {
+      if (room.users.size > 0) {
+        totalActiveUsers += room.users.size;
+        activeRoomsList.push([roomId, room]);
+      }
+    }
+    
+    // Şifresiz ve aktif odalar (popüler odalar listesi için)
+    const popularRooms = activeRoomsList
+      .filter(([_, room]) => !room.password)
+      .map(([roomId, room]) => ({
+        roomId,
+        userCount: room.users.size,
+        hasStream: room.streamActive,
+        hostName: Array.from(room.users.values()).find(u => u.userId === room.hostId)?.username || 'Unknown'
+      }))
+      .sort((a, b) => b.userCount - a.userCount)
+      .slice(0, 10);
+
+    const stats = {
+      totalRooms: activeRoomsList.length,
+      totalActiveUsers: totalActiveUsers,
+      totalRoomsCreated,
+      totalUsersJoined
+    };
+
+    console.log(`[STATS] Rooms: ${stats.totalRooms}, Users: ${stats.totalActiveUsers}, Popular: ${popularRooms.length}`);
+
+    socket.emit('popular-rooms', { rooms: popularRooms, stats });
+  });
+
+  // Oda oluştur (şifreli olabilir)
+  socket.on('create-room', ({ roomId, username, userId, password }) => {
     if (rooms.has(roomId)) {
       const existingRoom = rooms.get(roomId);
-      // If room exists and has users, join instead of create
       if (existingRoom.users.size > 0) {
-        socket.emit('room-already-exists', { roomId });
-        // Auto-join the existing room
-        existingRoom.users.set(userId, {
-          socketId: socket.id,
-          username,
-          userId,
-          joinedAt: Date.now()
-        });
-
-        socket.join(roomId);
-        socket.data.roomId = roomId;
-        socket.data.userId = userId;
-        socket.data.username = username;
-
-        socket.emit('room-joined', {
-          roomId,
-          isHost: userId === existingRoom.hostId,
-          users: Array.from(existingRoom.users.values()),
-          chatHistory: existingRoom.chatHistory,
-          streamActive: existingRoom.streamActive
-        });
-
-        socket.to(roomId).emit('user-joined', {
-          userId,
-          username,
-          users: Array.from(existingRoom.users.values())
-        });
-
-        console.log(`User ${username} (${userId}) auto-joined existing room ${roomId}`);
+        socket.emit('room-already-exists', { roomId, hasPassword: !!existingRoom.password });
         return;
       }
     }
 
-    // Create new room
+    totalRoomsCreated++;
+    totalUsersJoined++;
+
     rooms.set(roomId, {
       hostId: userId,
       users: new Map(),
       streamActive: false,
-      chatHistory: []
+      chatHistory: [],
+      password: password || null,
+      moderators: new Set([userId]), // Host otomatik moderatör
+      reactions: new Map()
     });
     
     const room = rooms.get(roomId);
@@ -102,47 +296,64 @@ io.on('connection', (socket) => {
     socket.data.userId = userId;
     socket.data.username = username;
 
-    // Kullanıcıya oda bilgilerini gönder
     socket.emit('room-created', {
       roomId,
-      isHost: userId === room.hostId,
+      isHost: true,
+      isModerator: true,
       users: Array.from(room.users.values()),
-      chatHistory: room.chatHistory
+      chatHistory: room.chatHistory,
+      hasPassword: !!password,
+      moderators: Array.from(room.moderators)
     });
 
-    // Diğer kullanıcılara yeni kullanıcı bildirimi
-    socket.to(roomId).emit('user-joined', {
-      userId,
-      username,
-      users: Array.from(room.users.values())
-    });
-
-    console.log(`User ${username} (${userId}) created room ${roomId}`);
+    console.log(`User ${username} created room ${roomId}${password ? ' (password protected)' : ''}`);
+    broadcastStats();
   });
 
-  // Odaya katıl - eğer oda yoksa otomatik oluştur
-  socket.on('join-room', ({ roomId, username, userId }) => {
-    // If room doesn't exist, create it automatically
-    if (!rooms.has(roomId)) {
+  // Odaya katıl
+  socket.on('join-room', ({ roomId, username, userId, password }) => {
+    const roomExists = rooms.has(roomId);
+    console.log(`[JOIN-ROOM] User ${username} (${userId}) joining room ${roomId}`);
+    console.log(`[JOIN-ROOM] Room exists: ${roomExists}, Total rooms: ${rooms.size}`);
+    
+    if (roomExists) {
+      const existingRoom = rooms.get(roomId);
+      console.log(`[JOIN-ROOM] Existing room has ${existingRoom.users.size} users, host: ${existingRoom.hostId}`);
+    }
+    
+    // Oda yoksa oluştur
+    if (!roomExists) {
+      totalRoomsCreated++;
       rooms.set(roomId, {
         hostId: userId,
         users: new Map(),
         streamActive: false,
-        chatHistory: []
+        chatHistory: [],
+        password: null,
+        moderators: new Set([userId]),
+        reactions: new Map()
       });
-      console.log(`Room ${roomId} created automatically for user ${username}`);
+      console.log(`[JOIN-ROOM] Room ${roomId} CREATED for ${username} (first user = HOST)`);
     }
 
     const room = rooms.get(roomId);
+    
+    // Şifre kontrolü
+    if (room.password && room.password !== password) {
+      socket.emit('password-required', { roomId });
+      return;
+    }
+
     const wasExistingUser = room.users.has(userId);
     
-    // Check if user is already in room (reconnection)
+    if (!wasExistingUser) {
+      totalUsersJoined++;
+    }
+
     if (wasExistingUser) {
-      // User already in room, just update socket ID
       const existingUser = room.users.get(userId);
       existingUser.socketId = socket.id;
     } else {
-      // Add new user to room
       room.users.set(userId, {
         socketId: socket.id,
         username,
@@ -156,18 +367,22 @@ io.on('connection', (socket) => {
     socket.data.userId = userId;
     socket.data.username = username;
 
-    // Determine if user is host (first user or original host)
     const isHost = userId === room.hostId;
+    const isModerator = room.moderators.has(userId);
+
+    console.log(`[JOIN-ROOM] Sending room-joined to ${username}: isHost=${isHost}, users=${room.users.size}, hostId=${room.hostId}`);
 
     socket.emit('room-joined', {
       roomId,
-      isHost: isHost,
+      isHost,
+      isModerator,
       users: Array.from(room.users.values()),
       chatHistory: room.chatHistory,
-      streamActive: room.streamActive
+      streamActive: room.streamActive,
+      hasPassword: !!room.password,
+      moderators: Array.from(room.moderators)
     });
 
-    // Notify other users (only if this is a new user joining, not a reconnection)
     if (!wasExistingUser && room.users.size > 1) {
       socket.to(roomId).emit('user-joined', {
         userId,
@@ -176,11 +391,10 @@ io.on('connection', (socket) => {
       });
     }
 
-    // Eğer stream aktifse ve host varsa, host'a yeni kullanıcıya offer göndermesi için bildir
-    if (room.streamActive && room.hostId && room.hostId !== userId) {
+    // Stream aktifse host'a bildir
+    if (room.streamActive && room.hostId !== userId) {
       const hostUser = Array.from(room.users.values()).find(u => u.userId === room.hostId);
       if (hostUser) {
-        // Small delay to ensure user is fully joined
         setTimeout(() => {
           io.to(hostUser.socketId).emit('new-viewer-joined', {
             viewerUserId: userId,
@@ -190,7 +404,157 @@ io.on('connection', (socket) => {
       }
     }
 
-    console.log(`User ${username} (${userId}) joined room ${roomId}`);
+    console.log(`User ${username} joined room ${roomId}`);
+    broadcastStats();
+  });
+
+  // Manuel odadan ayrılma (browser geri butonu, sayfa değişikliği vs.)
+  socket.on('leave-room', ({ roomId, userId, username }) => {
+    console.log(`[LEAVE-ROOM] User ${username} (${userId}) leaving room ${roomId}`);
+    
+    const room = rooms.get(roomId);
+    if (!room) {
+      console.log(`[LEAVE-ROOM] Room ${roomId} not found, nothing to do`);
+      return;
+    }
+    
+    console.log(`[LEAVE-ROOM] Room ${roomId} has ${room.users.size} users before removal`);
+
+    // Socket'i odadan çıkar
+    socket.leave(roomId);
+    
+    // Kullanıcıyı odadan sil
+    if (room.users.has(userId)) {
+      room.users.delete(userId);
+      room.moderators.delete(userId);
+
+      // Host ayrıldıysa yeni host seç
+      if (room.hostId === userId && room.users.size > 0) {
+        const newHost = Array.from(room.users.values())[0];
+        room.hostId = newHost.userId;
+        room.moderators.add(newHost.userId);
+        io.to(roomId).emit('host-changed', { 
+          newHostId: newHost.userId,
+          moderators: Array.from(room.moderators)
+        });
+        console.log(`Host changed to ${newHost.userId} in room ${roomId}`);
+      }
+
+      // Oda boşaldıysa sil
+      if (room.users.size === 0) {
+        rooms.delete(roomId);
+        console.log(`Room ${roomId} deleted (empty)`);
+      } else {
+        // Diğer kullanıcılara bildir
+        io.to(roomId).emit('user-left', {
+          userId,
+          username: username || 'Unknown',
+          users: Array.from(room.users.values())
+        });
+        console.log(`User ${username} left room ${roomId}`);
+      }
+    }
+
+    // Socket data temizle
+    socket.data.roomId = null;
+    socket.data.userId = null;
+    socket.data.username = null;
+    
+    broadcastStats();
+  });
+
+  // Şifre doğrulama
+  socket.on('verify-password', ({ roomId, password }) => {
+    const room = rooms.get(roomId);
+    if (!room) {
+      socket.emit('password-result', { success: false, error: 'Room not found' });
+      return;
+    }
+
+    if (room.password === password) {
+      socket.emit('password-result', { success: true });
+    } else {
+      socket.emit('password-result', { success: false, error: 'Wrong password' });
+    }
+  });
+
+  // Moderatör ekle/çıkar
+  socket.on('toggle-moderator', ({ roomId, targetUserId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    // Sadece host moderatör atayabilir
+    if (socket.data.userId !== room.hostId) {
+      socket.emit('error', { message: 'Only host can manage moderators' });
+      return;
+    }
+
+    if (room.moderators.has(targetUserId)) {
+      room.moderators.delete(targetUserId);
+    } else {
+      room.moderators.add(targetUserId);
+    }
+
+    io.to(roomId).emit('moderators-updated', {
+      moderators: Array.from(room.moderators)
+    });
+  });
+
+  // Chat mesajları (yanıt desteği ile)
+  socket.on('chat-message', ({ roomId, message, username, userId, replyTo }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const chatMessage = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      message,
+      username,
+      userId,
+      timestamp: Date.now(),
+      replyTo: replyTo || null, // { id, username, message }
+      reactions: {}
+    };
+
+    room.chatHistory.push(chatMessage);
+    if (room.chatHistory.length > 100) {
+      room.chatHistory = room.chatHistory.slice(-100);
+    }
+
+    io.to(roomId).emit('chat-message', chatMessage);
+  });
+
+  // Mesaja tepki ekle/çıkar
+  socket.on('toggle-reaction', ({ roomId, messageId, emoji, userId, username }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const message = room.chatHistory.find(m => m.id === messageId);
+    if (!message) return;
+
+    if (!message.reactions) {
+      message.reactions = {};
+    }
+
+    if (!message.reactions[emoji]) {
+      message.reactions[emoji] = [];
+    }
+
+    const userIndex = message.reactions[emoji].findIndex(u => u.userId === userId);
+    if (userIndex > -1) {
+      // Kaldır
+      message.reactions[emoji].splice(userIndex, 1);
+      if (message.reactions[emoji].length === 0) {
+        delete message.reactions[emoji];
+      }
+    } else {
+      // Ekle
+      message.reactions[emoji].push({ userId, username });
+    }
+
+    io.to(roomId).emit('reaction-updated', {
+      messageId,
+      reactions: message.reactions
+    });
   });
 
   // WebRTC sinyalleri
@@ -251,28 +615,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Chat mesajları
-  socket.on('chat-message', ({ roomId, message, username, userId }) => {
-    const room = rooms.get(roomId);
-    if (!room) return;
-
-    const chatMessage = {
-      id: Date.now().toString(),
-      message,
-      username,
-      userId,
-      timestamp: Date.now()
-    };
-
-    room.chatHistory.push(chatMessage);
-    // Son 100 mesajı tut
-    if (room.chatHistory.length > 100) {
-      room.chatHistory = room.chatHistory.slice(-100);
-    }
-
-    io.to(roomId).emit('chat-message', chatMessage);
-  });
-
   // Bağlantı kopması
   socket.on('disconnect', () => {
     const roomId = socket.data.roomId;
@@ -282,38 +624,37 @@ io.on('connection', (socket) => {
     if (roomId && rooms.has(roomId)) {
       const room = rooms.get(roomId);
       
-      // Check if user was actually in the room
       if (room.users.has(userId)) {
         room.users.delete(userId);
+        room.moderators.delete(userId);
 
-        // Eğer host ayrıldıysa ve başka kullanıcı varsa, yeni host seç
         if (room.hostId === userId && room.users.size > 0) {
           const newHost = Array.from(room.users.values())[0];
           room.hostId = newHost.userId;
-          io.to(roomId).emit('host-changed', { newHostId: newHost.userId });
-          console.log(`Host changed to ${newHost.userId} in room ${roomId}`);
+          room.moderators.add(newHost.userId);
+          io.to(roomId).emit('host-changed', { 
+            newHostId: newHost.userId,
+            moderators: Array.from(room.moderators)
+          });
         }
 
-        // Eğer oda boşaldıysa, odayı temizle
         if (room.users.size === 0) {
           rooms.delete(roomId);
-          console.log(`Room ${roomId} deleted (empty)`);
+          console.log(`Room ${roomId} deleted`);
         } else {
-          // Diğer kullanıcılara bildir (socket.to yerine io.to kullan)
           io.to(roomId).emit('user-left', {
             userId,
             username: username || 'Unknown',
             users: Array.from(room.users.values())
           });
-          console.log(`User ${username || userId} left room ${roomId}`);
         }
       }
     }
 
-    console.log('User disconnected:', socket.id, 'Room:', roomId || 'none');
+    console.log('User disconnected:', socket.id);
+    broadcastStats();
   });
 
-  // Ping/Pong
   socket.on('ping', () => {
     socket.emit('pong');
   });
@@ -323,4 +664,3 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`🚀 WatchTug Server running on port ${PORT}`);
 });
-
