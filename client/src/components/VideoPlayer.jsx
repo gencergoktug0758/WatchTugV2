@@ -281,8 +281,8 @@ const VideoPlayer = ({ isTheaterMode, onTheaterModeToggle }) => {
         {!streamActive && !isSharing && !hasVideoStream && (
           <div className="absolute inset-0 flex items-center justify-center bg-dark-bg/95 backdrop-blur-sm">
             <div className="text-center animate-fade-in">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-neon-pink/20 flex items-center justify-center border border-neon-purple/30 animate-pulse-glow">
-                <Tv className="w-12 h-12 text-neon-purple" />
+              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-neon-pink/20 flex items-center justify-center border border-neon-purple/30">
+                <Tv className="w-12 h-12 text-neon-purple/70" />
               </div>
               <p className="text-white text-xl font-bold mb-2">
                 {isHost ? 'Ekran Paylaşımını Başlat' : 'Yayın Bekleniyor'}

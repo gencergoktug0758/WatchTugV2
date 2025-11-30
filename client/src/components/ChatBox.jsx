@@ -124,7 +124,7 @@ const ChatBox = ({ isTheaterMode = false }) => {
     }`}>
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-white/10">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center shadow-neon-purple">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-purple/70 to-neon-pink/70 flex items-center justify-center">
           <MessageSquare className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -177,7 +177,7 @@ const ChatBox = ({ isTheaterMode = false }) => {
                   <div
                     className={`rounded-2xl px-4 py-3 transition-all ${
                       isOwn
-                        ? 'bg-gradient-to-r from-neon-purple to-neon-pink text-white shadow-neon-purple'
+                        ? 'bg-gradient-to-r from-neon-purple/80 to-neon-pink/80 text-white'
                         : 'bg-dark-surface2/80 text-white border border-white/10'
                     }`}
                   >

@@ -415,7 +415,7 @@ const Room = () => {
         
         <div className="text-center animate-fade-in relative z-10">
           <div className="relative mb-8 inline-block">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan p-[2px] animate-pulse-glow">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-purple/70 via-neon-pink/70 to-neon-cyan/70 p-[2px]">
               <div className="w-full h-full rounded-2xl bg-dark-bg flex items-center justify-center">
                 <Play className="w-10 h-10 text-white ml-1" />
               </div>
@@ -467,7 +467,7 @@ const Room = () => {
         <div className="max-w-7xl mx-auto mb-4">
           <div className="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 animate-slide-down">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan p-[2px] shadow-neon-purple">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-purple/70 via-neon-pink/70 to-neon-cyan/70 p-[2px]">
                 <div className="w-full h-full rounded-xl bg-dark-bg flex items-center justify-center">
                   <Play className="w-5 h-5 text-white ml-0.5" fill="currentColor" />
                 </div>
